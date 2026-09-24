@@ -899,11 +899,26 @@ function renderLastResult() {
       ? item.selected.map((key) => `${key.toUpperCase()}. ${resolveOptionText(item.options, key)}`).join(' | ')
       : 'Not answered';
     const correctAnswer = item.correctKeys?.map((key) => `${key.toUpperCase()}. ${resolveOptionText(item.options, key)}`).join(' | ') || item.correctAnswer || '—';
+    const optionHtml = (item.options || []).map((option) => {
+      const key = option.key;
+      const chosen = (item.selected || []).includes(key);
+      const isCorrectKey = (item.correctKeys || []).includes(key);
+      let status = '';
+      if (isCorrectKey) status = 'correct';
+      if (chosen && !isCorrectKey) status = `${status} wrong`.trim();
+      else if (chosen) status = `${status} selected`.trim();
+      return `
+        <div class="option review-option ${status}">
+          <span class="option-key">${escapeHtml(key)}</span>
+          <span>${escapeHtml(option.text)}</span>
+        </div>`;
+    }).join('');
     return `
       <article class="review-item ${statusClass}">
         <h4>Q${index + 1} · ${escapeHtml(item.sourceLabel || '')} · ${statusText}</h4>
-        <div>${escapeHtml(item.question)}</div>
+        <div class="question-text review-question-text">${escapeHtml(item.question)}</div>
         ${item.codeBlock ? `<pre class="code-block"><code>${escapeHtml(item.codeBlock)}</code></pre>` : ''}
+        <div class="options review-options">${optionHtml}</div>
         <div class="review-lines">
           <div><strong>Your answer:</strong> ${escapeHtml(yourAnswer)}</div>
           <div><strong>Correct answer:</strong> ${escapeHtml(correctAnswer)}</div>
