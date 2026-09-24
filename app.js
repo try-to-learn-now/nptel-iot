@@ -1,1447 +1,1052 @@
-const APP_CONFIG = {
-  noticeText: 'If you have NPTEL IoT 2018 JAN or 2019 JULY questions, send them to nkcbanka@gmail.com or contact @niteshjeee',
-  noticeDurationMs: 5000,
-  maxTestQuestions: 200,
+'use strict';
+
+const CONFIG = {
   manifestPath: './data/manifest.json',
-  repoUrl: 'https://github.com/Niteshjeee/nptel-iot',
-  contributionEmail: 'nkcbanka@gmail.com',
-  socialHandle: 'niteshjeee',
+  maxQuestions: 200,
+  historyLimit: 20,
   storage: {
-    profile: 'nptel_iot_profile_v7',
-    history: 'nptel_iot_history_v7',
-    settings: 'nptel_iot_settings_v7',
-    activeTest: 'nptel_iot_active_test_v7',
-    theme: 'nptel_iot_theme_v7'
+    theme: 'nptel_iot_v8_theme',
+    activeTest: 'nptel_iot_v8_active_test',
+    history: 'nptel_iot_v8_history',
+    lastResult: 'nptel_iot_v8_last_result'
   }
 };
 
 const state = {
   manifest: null,
   banks: [],
-  allQuestions: [],
-  years: [],
-  varieties: [],
-  history: [],
+  questions: [],
+  quarantined: [],
+  loadFailures: [],
   activeTest: null,
-  profileName: 'Guest User',
-  currentPage: 'home',
-  summary: {
-    total: 0,
-    active: 0,
-    blockedVisual: 0,
-    coding: 0,
-    removed: 0
-  }
+  timerHandle: null,
+  lastResult: null,
+  history: []
 };
 
-const pageTitles = {
-  home: 'Home',
-  build: 'Build Test',
-  test: 'Practice',
-  results: 'Results',
-  history: 'History',
-  datasets: 'Sessions',
-  contact: 'Contact'
-};
+const $ = (id) => document.getElementById(id);
 
 const dom = {
-  noticeBar: document.getElementById('noticeBar'),
-  noticeText: document.getElementById('noticeText'),
-  menuToggle: document.getElementById('menuToggle'),
-  themeToggleBtn: document.getElementById('themeToggleBtn'),
-  sideDrawer: document.getElementById('sideDrawer'),
-  drawerBackdrop: document.getElementById('drawerBackdrop'),
-  closeDrawerBtn: document.getElementById('closeDrawerBtn'),
-  currentPageTitle: document.getElementById('currentPageTitle'),
-  currentPageBadge: document.getElementById('currentPageBadge'),
-  profileBtn: document.getElementById('profileBtn'),
-  profileAvatar: document.getElementById('profileAvatar'),
-  drawerProfileAvatar: document.getElementById('drawerProfileAvatar'),
-  drawerProfileName: document.getElementById('drawerProfileName'),
-  drawerLoadedStat: document.getElementById('drawerLoadedStat'),
-  drawerCodingStat: document.getElementById('drawerCodingStat'),
-  totalQuestionsStat: document.getElementById('totalQuestionsStat'),
-  usableQuestionsStat: document.getElementById('usableQuestionsStat'),
-  imagePendingStat: document.getElementById('imagePendingStat'),
-  historyStat: document.getElementById('historyStat'),
-  yearsStat: document.getElementById('yearsStat'),
-  typesStat: document.getElementById('typesStat'),
-  quickHomeBuildBtn: document.getElementById('quickHomeBuildBtn'),
-  quickHomeResumeBtn: document.getElementById('quickHomeResumeBtn'),
-  datasetBadge: document.getElementById('datasetBadge'),
-  homeSummaryText: document.getElementById('homeSummaryText'),
-  homeDatasetsGrid: document.getElementById('homeDatasetsGrid'),
-  builderDatasetBadge: document.getElementById('builderDatasetBadge'),
-  yearSelect: document.getElementById('yearSelect'),
-  sessionSelect: document.getElementById('sessionSelect'),
-  weekSelect: document.getElementById('weekSelect'),
-  typeSelect: document.getElementById('typeSelect'),
-  practiceSelect: document.getElementById('practiceSelect'),
-  countSelect: document.getElementById('countSelect'),
-  searchInput: document.getElementById('searchInput'),
-  hideRemovedToggle: document.getElementById('hideRemovedToggle'),
-  hideImagePendingToggle: document.getElementById('hideImagePendingToggle'),
-  shuffleQuestionsToggle: document.getElementById('shuffleQuestionsToggle'),
-  shuffleOptionsToggle: document.getElementById('shuffleOptionsToggle'),
-  showSolutionsToggle: document.getElementById('showSolutionsToggle'),
-  showReferenceToggle: document.getElementById('showReferenceToggle'),
-  builderStatus: document.getElementById('builderStatus'),
-  startTestBtn: document.getElementById('startTestBtn'),
-  resumeTestBtn: document.getElementById('resumeTestBtn'),
-  resetHistoryBtn: document.getElementById('resetHistoryBtn'),
-  testPanel: document.getElementById('testPanel'),
-  testEmptyState: document.getElementById('testEmptyState'),
-  testResumeBtn: document.getElementById('testResumeBtn'),
-  testTitle: document.getElementById('testTitle'),
-  testMeta: document.getElementById('testMeta'),
-  progressChip: document.getElementById('progressChip'),
-  answeredCountBadge: document.getElementById('answeredCountBadge'),
-  progressBar: document.getElementById('progressBar'),
-  questionCard: document.getElementById('questionCard'),
-  questionPalette: document.getElementById('questionPalette'),
-  submitTestBtn: document.getElementById('submitTestBtn'),
-  quitTestBtn: document.getElementById('quitTestBtn'),
-  resultsPanel: document.getElementById('resultsPanel'),
-  resultsEmptyState: document.getElementById('resultsEmptyState'),
-  scoreBadge: document.getElementById('scoreBadge'),
-  resultsSummary: document.getElementById('resultsSummary'),
-  reviewList: document.getElementById('reviewList'),
-  reviewRestartBtn: document.getElementById('reviewRestartBtn'),
-  historyBadge: document.getElementById('historyBadge'),
-  historyList: document.getElementById('historyList'),
-  dataPageGrid: document.getElementById('dataPageGrid'),
-  manifestBadge: document.getElementById('manifestBadge'),
-  openRepoBtn: document.getElementById('openRepoBtn'),
-  copyIssueTemplateBtn: document.getElementById('copyIssueTemplateBtn'),
-  mailContributorBtn: document.getElementById('mailContributorBtn'),
-  copyContactBtn: document.getElementById('copyContactBtn')
+  pageTitle: $('pageTitle'),
+  themeBtn: $('themeBtn'),
+  statUsable: $('statUsable'),
+  statSets: $('statSets'),
+  statImages: $('statImages'),
+  statQuarantine: $('statQuarantine'),
+  latestPyqBtn: $('latestPyqBtn'),
+  quickMockBtn: $('quickMockBtn'),
+  resumeBtn: $('resumeBtn'),
+  resumeLabel: $('resumeLabel'),
+  integrityBadge: $('integrityBadge'),
+  integrityList: $('integrityList'),
+  pyqCountBadge: $('pyqCountBadge'),
+  pyqGrid: $('pyqGrid'),
+  yearSelect: $('yearSelect'),
+  sessionSelect: $('sessionSelect'),
+  weekSelect: $('weekSelect'),
+  typeSelect: $('typeSelect'),
+  countSelect: $('countSelect'),
+  timerSelect: $('timerSelect'),
+  shuffleOptions: $('shuffleOptions'),
+  practiceMode: $('practiceMode'),
+  poolCount: $('poolCount'),
+  poolImageCount: $('poolImageCount'),
+  startMockBtn: $('startMockBtn'),
+  testEmpty: $('testEmpty'),
+  testShell: $('testShell'),
+  testModeLabel: $('testModeLabel'),
+  testTitle: $('testTitle'),
+  testMeta: $('testMeta'),
+  timerBox: $('timerBox'),
+  timerText: $('timerText'),
+  testProgress: $('testProgress'),
+  answeredStat: $('answeredStat'),
+  reviewStat: $('reviewStat'),
+  unansweredStat: $('unansweredStat'),
+  questionNo: $('questionNo'),
+  questionSource: $('questionSource'),
+  markBtn: $('markBtn'),
+  questionBody: $('questionBody'),
+  prevBtn: $('prevBtn'),
+  clearBtn: $('clearBtn'),
+  checkBtn: $('checkBtn'),
+  nextBtn: $('nextBtn'),
+  questionPalette: $('questionPalette'),
+  paletteToggle: $('paletteToggle'),
+  submitBtn: $('submitBtn'),
+  saveCloseBtn: $('saveCloseBtn'),
+  resultsEmpty: $('resultsEmpty'),
+  resultsShell: $('resultsShell'),
+  resultTitle: $('resultTitle'),
+  resultScore: $('resultScore'),
+  resultPercent: $('resultPercent'),
+  resultCorrect: $('resultCorrect'),
+  resultWrong: $('resultWrong'),
+  resultUnanswered: $('resultUnanswered'),
+  reviewList: $('reviewList'),
+  historyList: $('historyList'),
+  clearHistoryBtn: $('clearHistoryBtn')
 };
 
 init().catch((error) => {
   console.error(error);
-  if (dom.noticeText) dom.noticeText.textContent = 'Could not load the local JSON files.';
-  if (dom.currentPageBadge) dom.currentPageBadge.textContent = 'Load failed';
+  alert('The practice app could not initialize. Check data/manifest.json and browser console.');
 });
 
 async function init() {
-  applyUiFixes();
-  initTheme(); // Load Dark Mode preference
-
-  if (dom.noticeText) dom.noticeText.textContent = APP_CONFIG.noticeText;
-  bindEvents();
-  scheduleNoticeDismiss();
-  hydrateProfile();
-  loadHistory();
-  await loadManifestAndBanks();
-  populateFilterOptions();
-
-  const hadSavedSettings = hydrateSettings();
-  if (!hadSavedSettings) applyDefaultFilters();
-
-  sanitizeFilters();
-  saveSettings();
-  updateStats();
-  updateBuilderStatus();
-  renderHome();
-  renderDatasetsPage();
+  initTheme();
+  bindStaticEvents();
+  loadLocalState();
+  await loadDataSafely();
+  populateFilters();
+  renderDashboard();
+  renderPyqSets();
   renderHistory();
-  renderResultsFromLastAttempt();
+  renderLastResult();
+  updateMockPool();
   restoreActiveTest(false);
   showPage('home');
 }
 
+function bindStaticEvents() {
+  document.querySelectorAll('[data-go]').forEach((button) => {
+    button.addEventListener('click', () => showPage(button.dataset.go));
+  });
+  dom.themeBtn.addEventListener('click', toggleTheme);
+  dom.latestPyqBtn.addEventListener('click', startLatestPyq);
+  dom.quickMockBtn.addEventListener('click', () => {
+    setMockDefaults();
+    startMock();
+  });
+  dom.resumeBtn.addEventListener('click', () => restoreActiveTest(true));
+  [dom.yearSelect, dom.sessionSelect, dom.weekSelect, dom.typeSelect, dom.countSelect]
+    .forEach((el) => el.addEventListener('change', onMockFilterChange));
+  dom.startMockBtn.addEventListener('click', startMock);
+  dom.prevBtn.addEventListener('click', () => moveQuestion(-1));
+  dom.nextBtn.addEventListener('click', () => moveQuestion(1));
+  dom.clearBtn.addEventListener('click', clearCurrentResponse);
+  dom.markBtn.addEventListener('click', toggleCurrentReview);
+  dom.checkBtn.addEventListener('click', checkCurrentSolution);
+  dom.submitBtn.addEventListener('click', () => submitTest(false));
+  dom.saveCloseBtn.addEventListener('click', saveAndClose);
+  dom.paletteToggle.addEventListener('click', togglePalette);
+  dom.clearHistoryBtn.addEventListener('click', clearHistory);
+
+  document.addEventListener('keydown', (event) => {
+    if (!state.activeTest || currentPage() !== 'test') return;
+    if (event.key === 'ArrowLeft') moveQuestion(-1);
+    if (event.key === 'ArrowRight') moveQuestion(1);
+  });
+}
+
 function initTheme() {
-  const saved = localStorage.getItem(APP_CONFIG.storage.theme);
-  const isDark = saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  if (isDark) {
-    document.documentElement.setAttribute('data-theme', 'dark');
-  }
+  const saved = localStorage.getItem(CONFIG.storage.theme);
+  const dark = saved === 'dark' || (!saved && window.matchMedia?.('(prefers-color-scheme: dark)').matches);
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
   updateThemeIcon();
 }
 
 function toggleTheme() {
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  const newTheme = isDark ? 'light' : 'dark';
-  document.documentElement.setAttribute('data-theme', newTheme);
-  localStorage.setItem(APP_CONFIG.storage.theme, newTheme);
+  const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = next;
+  localStorage.setItem(CONFIG.storage.theme, next);
   updateThemeIcon();
 }
 
 function updateThemeIcon() {
-  if (!dom.themeToggleBtn) return;
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  dom.themeToggleBtn.textContent = isDark ? '☀️' : '🌙';
+  dom.themeBtn.textContent = document.documentElement.dataset.theme === 'dark' ? '☀️' : '🌙';
 }
 
-function applyUiFixes() {
-  const style = document.createElement('style');
-  style.textContent = `
-    body.notice-hidden .topbar {
-      top: 0 !important;
-    }
-    #page-build .toggle-grid {
-      display: none !important;
-    }
-    #page-home .hero-actions,
-    #page-build .actions-row {
-      display: grid !important;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
-    }
-    #page-build .actions-row button:last-child {
-      grid-column: 1 / -1;
-    }
-    #page-test .page-card {
-      padding-bottom: 120px;
-    }
-    .actions-row > button,
-    .hero-actions > button {
-      min-height: 50px;
-    }
-    .profile-chip.simple {
-      pointer-events: none;
-      cursor: default;
-    }
-    @media (max-width: 719px) {
-      .quick-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-      }
-      .actions-row > button,
-      .hero-actions > button {
-        width: 100%;
-      }
-    }
-  `;
-  document.head.appendChild(style);
+function loadLocalState() {
+  state.history = safeJsonParse(localStorage.getItem(CONFIG.storage.history), []);
+  state.lastResult = safeJsonParse(localStorage.getItem(CONFIG.storage.lastResult), null);
+}
 
-  const eyebrowEls = document.querySelectorAll('.topbar .eyebrow');
-  eyebrowEls.forEach((el) => {
-    el.textContent = 'NPTEL IoT Practice';
+async function loadDataSafely() {
+  const manifestRes = await fetch(CONFIG.manifestPath, { cache: 'no-cache' });
+  if (!manifestRes.ok) throw new Error('Could not load data/manifest.json');
+  state.manifest = await manifestRes.json();
+
+  const datasets = Array.isArray(state.manifest.datasets) ? state.manifest.datasets : [];
+  const settled = await Promise.allSettled(
+    datasets.map(async (entry) => {
+      const expected = parseDatasetFile(entry.file);
+      if (!expected.year || !expected.session) {
+        throw new Error(`Cannot derive year/session from filename: ${entry.file}`);
+      }
+
+      const res = await fetch(`./data/${entry.file}`, { cache: 'no-cache' });
+      if (!res.ok) throw new Error(`${entry.file}: HTTP ${res.status}`);
+      const bank = await res.json();
+      return validateAndNormalizeBank(entry, bank, expected);
+    })
+  );
+
+  state.banks = [];
+  state.quarantined = [];
+  state.loadFailures = [];
+
+  settled.forEach((result, index) => {
+    const file = datasets[index]?.file || `dataset-${index + 1}`;
+    if (result.status === 'rejected') {
+      state.loadFailures.push({ file, reason: result.reason?.message || String(result.reason) });
+      return;
+    }
+    if (result.value.valid) state.banks.push(result.value.bank);
+    else state.quarantined.push(result.value.issue);
   });
 
-  if (dom.profileBtn) {
-    dom.profileBtn.setAttribute('title', 'Guest user');
-    dom.profileBtn.setAttribute('aria-label', 'Guest user');
+  const seen = new Set();
+  state.questions = state.banks.flatMap((bank) => bank.questions).filter((q) => {
+    if (seen.has(q.runtimeId)) return false;
+    seen.add(q.runtimeId);
+    return true;
+  });
+}
+
+function validateAndNormalizeBank(manifestEntry, rawBank, expected) {
+  const topYear = Number(rawBank.year);
+  const topSession = normalizeSession(rawBank.session);
+  const reasons = [];
+
+  if (topYear && topYear !== expected.year) reasons.push(`bank year ${topYear} ≠ filename year ${expected.year}`);
+  if (topSession && topSession !== expected.session) reasons.push(`bank session ${topSession} ≠ filename session ${expected.session}`);
+
+  const rawQuestions = Array.isArray(rawBank.questions) ? rawBank.questions : [];
+  if (!rawQuestions.length) reasons.push('no questions found');
+
+  let metadataMismatch = 0;
+  for (const q of rawQuestions) {
+    const qYear = Number(q.year);
+    const qSession = normalizeSession(q.session);
+    if ((qYear && qYear !== expected.year) || (qSession && qSession !== expected.session)) metadataMismatch += 1;
   }
+
+  const mismatchRatio = rawQuestions.length ? metadataMismatch / rawQuestions.length : 1;
+  if (mismatchRatio > 0.1) reasons.push(`${metadataMismatch}/${rawQuestions.length} questions have year/session mismatch`);
+
+  if (reasons.length) {
+    return {
+      valid: false,
+      issue: { file: manifestEntry.file, expected, reasons }
+    };
+  }
+
+  const questions = rawQuestions.map((q, index) => normalizeQuestion(q, manifestEntry.file, expected, index));
+  return {
+    valid: true,
+    bank: {
+      file: manifestEntry.file,
+      year: expected.year,
+      session: expected.session,
+      title: `NPTEL IoT ${expected.year} ${expected.session}`,
+      questions
+    }
+  };
 }
 
-function on(element, eventName, handler) {
-  if (element) element.addEventListener(eventName, handler);
-}
+function normalizeQuestion(q, file, expected, index) {
+  const options = Array.isArray(q.options)
+    ? q.options
+        .filter((o) => o && o.key != null)
+        .map((o) => ({ key: String(o.key), text: String(o.text ?? '') }))
+    : [];
 
-function scheduleNoticeDismiss() {
-  if (!dom.noticeBar) return;
-  window.setTimeout(() => {
-    dom.noticeBar.classList.add('is-hidden');
-    document.body.classList.add('notice-hidden');
-  }, APP_CONFIG.noticeDurationMs);
-}
+  const answerKeys = Array.isArray(q.answer?.keys)
+    ? q.answer.keys.map(String)
+    : q.answer?.key != null
+      ? [String(q.answer.key)]
+      : [];
 
-function bindEvents() {
-  on(dom.menuToggle, 'click', openDrawer);
-  on(dom.themeToggleBtn, 'click', toggleTheme);
-  on(dom.closeDrawerBtn, 'click', closeDrawer);
-  on(dom.drawerBackdrop, 'click', closeDrawer);
-  on(dom.quickHomeBuildBtn, 'click', () => showPage('build'));
-  on(dom.quickHomeResumeBtn, 'click', () => restoreActiveTest(true));
-  on(dom.testResumeBtn, 'click', () => restoreActiveTest(true));
-  on(dom.startTestBtn, 'click', startTest);
-  on(dom.resumeTestBtn, 'click', () => restoreActiveTest(true));
-  on(dom.resetHistoryBtn, 'click', resetHistory);
-  on(dom.submitTestBtn, 'click', submitTest);
-  on(dom.quitTestBtn, 'click', quitTest);
-  on(dom.reviewRestartBtn, 'click', () => showPage('build'));
-  on(dom.openRepoBtn, 'click', () => window.open(APP_CONFIG.repoUrl, '_blank', 'noopener'));
-  on(dom.copyIssueTemplateBtn, 'click', copyIssueTemplate);
-  on(dom.mailContributorBtn, 'click', openContributionMail);
-  on(dom.copyContactBtn, 'click', copyContactDetails);
-
-  document.querySelectorAll('button[data-page]').forEach((btn) =>
-    on(btn, 'click', () => showPage(btn.dataset.page))
-  );
-  document.querySelectorAll('[data-page-jump]').forEach((btn) =>
-    on(btn, 'click', () => showPage(btn.dataset.pageJump))
-  );
-  document.querySelectorAll('.drawer-link').forEach((btn) =>
-    on(btn, 'click', () => showPage(btn.dataset.page))
-  );
-  document.querySelectorAll('.bottom-link').forEach((btn) =>
-    on(btn, 'click', () => showPage(btn.dataset.page))
-  );
-  document.querySelectorAll('[data-quick]').forEach((btn) =>
-    on(btn, 'click', () => applyQuickPreset(btn.dataset.quick))
+  const imageRequired = Boolean(
+    q.image_required === true ||
+    q.needs_image === true ||
+    String(q.type || '').toLowerCase() === 'image_based' ||
+    String(q.response_mode || '').toLowerCase().includes('visual')
   );
 
-  [
-    dom.yearSelect,
-    dom.sessionSelect,
-    dom.weekSelect,
-    dom.typeSelect,
-    dom.practiceSelect,
-    dom.countSelect,
-    dom.searchInput
-  ]
-    .filter(Boolean)
-    .forEach((el) => {
-      const eventName = el.tagName === 'INPUT' && el.type === 'text' ? 'input' : 'change';
-      on(el, eventName, onFilterChange);
-    });
+  const week = Number(q.week) || inferNumber(q.week_label) || 0;
+  const qNum = Number(q.qNum) || inferNumber(q.display_no?.split('-').pop()) || index + 1;
+  const type = String(q.variety_tag || q.type || 'mcq').toLowerCase();
+  const isMulti = answerKeys.length > 1 || String(q.response_mode || '').toLowerCase() === 'multi_select';
+
+  return {
+    runtimeId: `${file}::${q.id || q.uid || index}`,
+    sourceId: String(q.id || q.uid || `${expected.year}-${expected.session}-${week}-${qNum}`),
+    file,
+    year: expected.year,
+    session: expected.session,
+    week,
+    qNum,
+    displayNo: String(q.display_no || `W${pad2(week)}-Q${pad2(qNum)}`),
+    sourceLabel: String(q.source_label || `${expected.year} ${expected.session} | Week ${week} | Q${qNum}`),
+    type,
+    question: String(q.question || ''),
+    codeBlock: q.code_block ? String(q.code_block) : '',
+    options,
+    answerKeys,
+    answerDisplay: String(q.answer_display || (Array.isArray(q.answer?.text) ? q.answer.text.join(', ') : '')),
+    solution: String(q.detailed_solution || ''),
+    reference: String(q.reference || ''),
+    marks: Number(q.marks) > 0 ? Number(q.marks) : 1,
+    removed: Boolean(q.removed),
+    imageRequired,
+    isMulti,
+    usable: !q.removed && !imageRequired && Boolean(q.question) && options.length >= 2 && answerKeys.length >= 1
+  };
 }
 
 function parseDatasetFile(file) {
-  const match = String(file || '').match(/(20\d{2})_(JAN|JULY)/i);
-  if (!match) return { year: null, session: null };
-  return {
-    year: Number(match[1]),
-    session: match[2].toUpperCase()
-  };
+  const match = String(file || '').match(/(20\d{2})[_-](JAN|JULY)/i);
+  return match ? { year: Number(match[1]), session: match[2].toUpperCase() } : { year: null, session: null };
 }
 
-function optionValues(select) {
-  return select ? [...select.options].map((option) => option.value) : [];
+function renderDashboard() {
+  const usable = state.questions.filter((q) => q.usable).length;
+  const images = state.questions.filter((q) => !q.removed && q.imageRequired).length;
+  dom.statUsable.textContent = String(usable);
+  dom.statSets.textContent = String(state.banks.length);
+  dom.statImages.textContent = String(images);
+  dom.statQuarantine.textContent = String(state.quarantined.length + state.loadFailures.length);
+
+  const issues = [
+    ...state.quarantined.map((x) => ({ ...x, kind: 'quarantine' })),
+    ...state.loadFailures.map((x) => ({ ...x, kind: 'load' }))
+  ];
+
+  dom.integrityBadge.textContent = issues.length ? `${issues.length} blocked` : 'All valid';
+  dom.integrityList.innerHTML = issues.length
+    ? issues.map((item) => `
+      <div class="integrity-row bad">
+        <div><strong>${escapeHtml(item.file)}</strong><br><small>${escapeHtml((item.reasons || [item.reason]).join(' · '))}</small></div>
+        <span class="badge">Excluded</span>
+      </div>`).join('')
+    : `<div class="integrity-row good"><div><strong>No dataset mismatch detected.</strong><br><small>Only validated banks can enter tests.</small></div><span class="badge">OK</span></div>`;
+
+  updateResumeButton();
 }
 
-function setSelectValueSafely(select, value, fallback = 'ALL') {
-  if (!select) return;
-  const values = optionValues(select);
-  const target = String(value ?? '');
-  if (values.includes(target)) {
-    select.value = target;
-    return;
-  }
-  if (values.includes(String(fallback))) {
-    select.value = String(fallback);
-    return;
-  }
-  select.value = values[0] || '';
-}
+function renderPyqSets() {
+  const banks = [...state.banks].sort(sortBankDesc);
+  dom.pyqCountBadge.textContent = `${banks.length} sets`;
+  dom.pyqGrid.innerHTML = banks.map((bank) => {
+    const usable = bank.questions.filter((q) => q.usable);
+    const weeks = [...new Set(usable.map((q) => q.week).filter(Boolean))].sort((a, b) => a - b);
+    const imageCount = bank.questions.filter((q) => !q.removed && q.imageRequired).length;
+    return `
+      <article class="dataset-card">
+        <h3>${escapeHtml(bank.year)} ${escapeHtml(bank.session)}</h3>
+        <div class="dataset-meta">
+          <span class="badge">${usable.length} usable</span>
+          <span class="badge">${weeks.length} weeks</span>
+          ${imageCount ? `<span class="badge">${imageCount} images skipped</span>` : ''}
+        </div>
+        <div class="dataset-actions">
+          <button class="btn primary compact" data-pyq-file="${escapeAttr(bank.file)}" data-pyq-week="ALL" type="button">Full PYQ</button>
+          <button class="btn secondary compact" data-pyq-practice="${escapeAttr(bank.file)}" type="button">Practice</button>
+        </div>
+        <div class="week-row">
+          ${weeks.map((week) => `<button class="week-btn" data-pyq-file="${escapeAttr(bank.file)}" data-pyq-week="${week}" type="button">W${week}</button>`).join('')}
+        </div>
+      </article>`;
+  }).join('');
 
-function sanitizeFilters() {
-  const datasets = sortDatasets(state.manifest?.datasets || []);
-  const latest = datasets[0] || null;
-
-  setSelectValueSafely(dom.yearSelect, dom.yearSelect?.value, latest ? String(latest.year) : 'ALL');
-  populateSessionOptions();
-  setSelectValueSafely(dom.sessionSelect, dom.sessionSelect?.value, 'ALL');
-  populateWeekOptions();
-  setSelectValueSafely(dom.weekSelect, dom.weekSelect?.value, 'ALL');
-  setSelectValueSafely(dom.typeSelect, dom.typeSelect?.value, 'ALL');
-  setSelectValueSafely(dom.practiceSelect, dom.practiceSelect?.value, 'ALL');
-
-  if (dom.countSelect) {
-    const countOptions = optionValues(dom.countSelect);
-    const raw = Math.min(Number(dom.countSelect.value || 15), APP_CONFIG.maxTestQuestions);
-    const fallback = countOptions.includes('15') ? '15' : countOptions[0] || '15';
-    setSelectValueSafely(dom.countSelect, String(raw || 15), fallback);
-  }
-
-  if (dom.searchInput && typeof dom.searchInput.value !== 'string') {
-    dom.searchInput.value = '';
-  }
-}
-
-function getDatasetRuntimeSummary(dataset) {
-  const file = typeof dataset === 'string' ? dataset : dataset.file;
-  const questions = state.allQuestions.filter((question) => question.sourceFile === file);
-
-  const total = questions.length;
-  const removed = questions.filter((question) => Boolean(question.removed)).length;
-  const imageRequired = questions.filter((question) => !question.removed && Boolean(question.blockedVisual)).length;
-  const ready = questions.filter((question) => !question.removed && !question.blockedVisual).length;
-  const coding = questions.filter(
-    (question) => !question.removed && !question.blockedVisual && question.practiceTag === 'coding'
-  ).length;
-  const conceptual = questions.filter(
-    (question) => !question.removed && !question.blockedVisual && question.practiceTag === 'conceptual'
-  ).length;
-
-  return { total, removed, imageRequired, ready, coding, conceptual };
-}
-
-async function loadManifestAndBanks() {
-  const manifestRes = await fetch(APP_CONFIG.manifestPath, { cache: 'no-cache' });
-  if (!manifestRes.ok) throw new Error('Failed to load data/manifest.json');
-
-  const rawManifest = await manifestRes.json();
-  const resolvedDatasets = (rawManifest.datasets || []).map((dataset) => {
-    const derived = parseDatasetFile(dataset.file);
-    return {
-      ...dataset,
-      year: derived.year ?? dataset.year,
-      session: derived.session ?? dataset.session
-    };
+  dom.pyqGrid.querySelectorAll('[data-pyq-file]').forEach((button) => {
+    button.addEventListener('click', () => startPyq(button.dataset.pyqFile, button.dataset.pyqWeek, false));
   });
-
-  state.manifest = {
-    ...rawManifest,
-    datasets: resolvedDatasets
-  };
-
-  const banks = await Promise.all(
-    resolvedDatasets.map(async (dataset) => {
-      const path = `./data/${dataset.file}`;
-      const res = await fetch(path, { cache: 'no-cache' });
-      if (!res.ok) throw new Error(`Failed to load ${dataset.file}`);
-
-      const bank = await res.json();
-      return {
-        ...bank,
-        year: dataset.year,
-        session: dataset.session,
-        file: dataset.file,
-        slug: dataset.slug,
-        title: buildDatasetTitle(dataset),
-        summary: dataset.summary || {}
-      };
-    })
-  );
-
-  state.banks = banks;
-  state.allQuestions = banks.flatMap((bank) =>
-    (bank.questions || []).map((question, index) => normalizeQuestion(question, bank, index))
-  );
-
-  state.years = [...new Set(state.manifest.datasets.map((dataset) => dataset.year))]
-    .filter((value) => value !== null && value !== undefined)
-    .sort((a, b) => a - b);
-
-  state.varieties = [...new Set(state.allQuestions.map((question) => question.varietyTag))].sort();
-
-  if (dom.datasetBadge) dom.datasetBadge.textContent = `${banks.length} files · ${state.allQuestions.length} questions`;
-  if (dom.builderDatasetBadge) dom.builderDatasetBadge.textContent = `${banks.length} files loaded`;
-  if (dom.manifestBadge) dom.manifestBadge.textContent = `${banks.length} files`;
+  dom.pyqGrid.querySelectorAll('[data-pyq-practice]').forEach((button) => {
+    button.addEventListener('click', () => startPyq(button.dataset.pyqPractice, 'ALL', true));
+  });
 }
 
-function normalizeQuestion(question, bank, index) {
-  const answerKeys = Array.isArray(question.answer?.keys) ? question.answer.keys.map(String) : [];
-  const answerTexts = Array.isArray(question.answer?.text) ? question.answer.text.map(String) : [];
-  const options = Array.isArray(question.options) ? question.options : [];
-  const image = question.image || null;
-
-  const year = question.year ?? bank.year;
-  const session = (question.session ?? bank.session ?? '').toString().toUpperCase();
-  const week = question.week ?? null;
-  const responseMode = question.response_mode || 'single_select';
-
-  const rawPractice = String(question.practice_tag || '').toLowerCase();
-  const rawVariety = String(question.variety_tag || question.type || '').toLowerCase();
-
-  const isCodeQuestion = Boolean(
-    question.type === 'code_based' ||
-    question.has_code === true ||
-    question.code_block ||
-    rawPractice === 'coding' ||
-    rawVariety === 'code_based'
-  );
-
-  const isActuallyVisual = Boolean(
-    question.image_required === true ||
-    question.needs_image === true ||
-    question.type === 'image_based' ||
-    /visual/i.test(String(responseMode))
-  );
-
-  const practiceTag = isCodeQuestion ? 'coding' : (isActuallyVisual ? 'visual' : 'conceptual');
-
-  let varietyTag = question.variety_tag || question.type || 'mcq';
-  if (String(varietyTag).toLowerCase() === 'visual' && !isActuallyVisual) {
-    varietyTag = question.type && question.type !== 'image_based' ? question.type : 'mcq';
-  }
-
-  return {
-    ...question,
-    year,
-    session,
-    week,
-    runtimeIndex: index,
-    bankTitle: bank.title,
-    bankSlug: bank.slug,
-    sourceFile: bank.file,
-    answerKeys,
-    answerTexts,
-    answerDisplay:
-      question.answer_display || (answerTexts.length ? answerTexts.join(', ') : answerKeys.join(', ')),
-    varietyTag,
-    practiceTag,
-    responseMode,
-    image,
-    imageResolved: !isActuallyVisual,
-    blockedVisual: isActuallyVisual,
-    searchBlob: normalizeText(
-      [
-        question.uid,
-        question.id,
-        question.display_no,
-        question.question,
-        question.code_block,
-        question.detailed_solution,
-        question.reference,
-        question.answer_display,
-        practiceTag,
-        varietyTag,
-        bank.title,
-        bank.file,
-        year,
-        session,
-        week,
-        ...(options.map((option) => option.text))
-      ]
-        .filter(Boolean)
-        .join(' ')
-    )
-  };
-}
-
-function hydrateProfile() {
-  const saved = localStorage.getItem(APP_CONFIG.storage.profile);
-  if (saved) state.profileName = saved;
-  syncProfileDom();
-}
-
-function syncProfileDom() {
-  const initial = (state.profileName || 'G').trim().charAt(0).toUpperCase() || 'G';
-  if (dom.drawerProfileName) dom.drawerProfileName.textContent = state.profileName;
-  if (dom.profileAvatar) dom.profileAvatar.textContent = initial;
-  if (dom.drawerProfileAvatar) dom.drawerProfileAvatar.textContent = initial;
-}
-
-function loadHistory() {
-  try {
-    state.history = JSON.parse(localStorage.getItem(APP_CONFIG.storage.history) || '[]');
-  } catch {
-    state.history = [];
-  }
-}
-
-function saveHistory() {
-  localStorage.setItem(APP_CONFIG.storage.history, JSON.stringify(state.history.slice(0, 50)));
-}
-
-function resetHistory() {
-  if (!window.confirm('Clear the saved attempt history from this browser?')) return;
-  state.history = [];
-  saveHistory();
-  renderHistory();
-  updateStats();
-  renderResultsFromLastAttempt();
-}
-
-function hydrateSettings() {
-  try {
-    const settings = JSON.parse(localStorage.getItem(APP_CONFIG.storage.settings) || '{}');
-    const hasSaved = Object.keys(settings).length > 0;
-
-    if (settings.year && dom.yearSelect) dom.yearSelect.value = settings.year;
-    if (settings.session && dom.sessionSelect) dom.sessionSelect.value = settings.session;
-    if (settings.week && dom.weekSelect) dom.weekSelect.value = settings.week;
-    if (settings.type && dom.typeSelect) dom.typeSelect.value = settings.type;
-    if (settings.practice && dom.practiceSelect) dom.practiceSelect.value = settings.practice;
-    if (settings.count && dom.countSelect) {
-      dom.countSelect.value = String(Math.min(Number(settings.count), APP_CONFIG.maxTestQuestions));
-    }
-    if (typeof settings.search === 'string' && dom.searchInput) dom.searchInput.value = settings.search;
-    return hasSaved;
-  } catch {
-    return false;
-  }
-}
-
-function applyDefaultFilters() {
-  const datasets = sortDatasets(state.manifest?.datasets || []);
-  const latest = datasets[0];
-  if (!latest) return;
-
-  if (dom.yearSelect) dom.yearSelect.value = String(latest.year);
-  populateSessionOptions();
-  if (dom.sessionSelect) dom.sessionSelect.value = latest.session;
-  populateWeekOptions();
-
-  if (dom.weekSelect) dom.weekSelect.value = 'ALL';
-  if (dom.typeSelect) dom.typeSelect.value = 'ALL';
-  if (dom.practiceSelect) dom.practiceSelect.value = 'ALL';
-  if (dom.countSelect) dom.countSelect.value = '15';
-  if (dom.searchInput) dom.searchInput.value = '';
-}
-
-function saveSettings() {
-  localStorage.setItem(APP_CONFIG.storage.settings, JSON.stringify(readFilterSettings()));
-}
-
-function readFilterSettings() {
-  return {
-    year: dom.yearSelect?.value || 'ALL',
-    session: dom.sessionSelect?.value || 'ALL',
-    week: dom.weekSelect?.value || 'ALL',
-    type: dom.typeSelect?.value || 'ALL',
-    practice: dom.practiceSelect?.value || 'ALL',
-    count: String(Math.min(Number(dom.countSelect?.value || 15), APP_CONFIG.maxTestQuestions)),
-    search: dom.searchInput?.value.trim() || '',
-    hideRemoved: true,
-    hideImagePending: true,
-    shuffleQuestions: true,
-    shuffleOptions: false,
-    showSolutions: true,
-    showReference: true
-  };
-}
-
-function populateFilterOptions() {
-  populateSelect(dom.yearSelect, state.years, 'ALL', 'All years', (value) => String(value));
-  populateSelect(dom.typeSelect, state.varieties, 'ALL', 'All varieties');
+function populateFilters() {
+  fillSelect(dom.yearSelect, uniqueSorted(state.banks.map((b) => b.year), (a, b) => b - a), 'All years');
   populateSessionOptions();
   populateWeekOptions();
+  fillSelect(dom.typeSelect, uniqueSorted(state.questions.filter((q) => q.usable).map((q) => q.type)), 'All types', formatType);
+}
+
+function onMockFilterChange(event) {
+  if (event.target === dom.yearSelect) {
+    populateSessionOptions();
+    populateWeekOptions();
+  } else if (event.target === dom.sessionSelect) {
+    populateWeekOptions();
+  }
+  updateMockPool();
 }
 
 function populateSessionOptions() {
-  if (!dom.sessionSelect) return;
-
-  const year = dom.yearSelect?.value || 'ALL';
-  const sessions = [
-    ...new Set(
-      (state.manifest?.datasets || [])
-        .filter((dataset) => year === 'ALL' || String(dataset.year) === year)
-        .map((dataset) => dataset.session)
-    )
-  ].sort((a, b) => sessionRank(a) - sessionRank(b));
-
-  const current = dom.sessionSelect.value || 'ALL';
-  dom.sessionSelect.innerHTML = '';
-
-  if (sessions.length !== 1) {
-    const allOption = document.createElement('option');
-    allOption.value = 'ALL';
-    allOption.textContent = 'All sessions';
-    dom.sessionSelect.appendChild(allOption);
-  }
-
-  sessions.forEach((session) => {
-    const option = document.createElement('option');
-    option.value = String(session);
-    option.textContent = formatSession(session);
-    dom.sessionSelect.appendChild(option);
-  });
-
-  if (sessions.length === 1) {
-    dom.sessionSelect.value = sessions[0];
-    dom.sessionSelect.disabled = true;
-  } else {
-    dom.sessionSelect.disabled = false;
-    dom.sessionSelect.value = optionValues(dom.sessionSelect).includes(current) ? current : 'ALL';
-  }
+  const year = dom.yearSelect.value;
+  const sessions = uniqueSorted(
+    state.banks.filter((b) => year === 'ALL' || String(b.year) === year).map((b) => b.session),
+    (a, b) => sessionRank(b) - sessionRank(a)
+  );
+  fillSelect(dom.sessionSelect, sessions, 'All sessions');
 }
 
 function populateWeekOptions() {
-  const year = dom.yearSelect?.value || 'ALL';
-  const session = dom.sessionSelect?.value || 'ALL';
-
-  const weeks = [
-    ...new Set(
-      state.allQuestions
-        .filter(
-          (question) =>
-            (year === 'ALL' || String(question.year) === year) &&
-            (session === 'ALL' || question.session === session)
-        )
-        .map((question) => question.week)
-        .filter((week) => week !== null && week !== undefined && String(week).trim() !== '')
-    )
-  ].sort((a, b) => Number(a) - Number(b));
-
-  populateSelect(dom.weekSelect, weeks, 'ALL', 'All weeks', (value) => `Week ${value}`);
+  const year = dom.yearSelect.value;
+  const session = dom.sessionSelect.value;
+  const weeks = uniqueSorted(
+    state.questions
+      .filter((q) => q.usable)
+      .filter((q) => year === 'ALL' || String(q.year) === year)
+      .filter((q) => session === 'ALL' || q.session === session)
+      .map((q) => q.week)
+      .filter(Boolean),
+    (a, b) => a - b
+  );
+  fillSelect(dom.weekSelect, weeks, 'All weeks', (x) => `Week ${x}`);
 }
 
-function populateSelect(select, values, allValue, allLabel, formatter = formatType) {
-  if (!select) return;
-
-  const current = select.value || allValue;
-  select.innerHTML = '';
-
-  const allOption = document.createElement('option');
-  allOption.value = allValue;
-  allOption.textContent = allLabel;
-  select.appendChild(allOption);
-
-  values.forEach((value) => {
-    const option = document.createElement('option');
-    option.value = String(value);
-    option.textContent = formatter(String(value));
-    select.appendChild(option);
-  });
-
-  if ([...select.options].some((option) => option.value === current)) {
-    select.value = current;
-  } else {
-    select.value = allValue;
-  }
+function fillSelect(select, values, allLabel, formatter = String) {
+  const old = select.value;
+  select.innerHTML = `<option value="ALL">${escapeHtml(allLabel)}</option>` +
+    values.map((v) => `<option value="${escapeAttr(v)}">${escapeHtml(formatter(v))}</option>`).join('');
+  if ([...select.options].some((o) => o.value === old)) select.value = old;
 }
 
-function clampCountSelect() {
-  if (!dom.countSelect) return;
-  const count = Math.min(Number(dom.countSelect.value || 15), APP_CONFIG.maxTestQuestions);
-  dom.countSelect.value = String(count);
+function updateMockPool() {
+  const pool = getMockPool();
+  const filteredRaw = state.questions.filter((q) => matchesBasicFilters(q));
+  const skippedImages = filteredRaw.filter((q) => q.imageRequired && !q.removed).length;
+  dom.poolCount.textContent = String(pool.length);
+  dom.poolImageCount.textContent = String(skippedImages);
+  dom.startMockBtn.disabled = pool.length === 0;
 }
 
-function onFilterChange(event) {
-  if (event?.target?.id === 'yearSelect') {
-    populateSessionOptions();
-    populateWeekOptions();
-  }
-
-  if (event?.target?.id === 'sessionSelect') {
-    populateWeekOptions();
-  }
-
-  sanitizeFilters();
-  clampCountSelect();
-  saveSettings();
-  updateBuilderStatus();
-  renderHome();
-  renderDatasetsPage();
+function matchesBasicFilters(q) {
+  if (dom.yearSelect.value !== 'ALL' && String(q.year) !== dom.yearSelect.value) return false;
+  if (dom.sessionSelect.value !== 'ALL' && q.session !== dom.sessionSelect.value) return false;
+  if (dom.weekSelect.value !== 'ALL' && String(q.week) !== dom.weekSelect.value) return false;
+  if (dom.typeSelect.value !== 'ALL' && q.type !== dom.typeSelect.value) return false;
+  return true;
 }
 
-function applyQuickPreset(key) {
-  const latestJan = getLatestDatasetBySession('JAN');
-  const latestJuly = getLatestDatasetBySession('JULY');
+function getMockPool() {
+  return state.questions.filter((q) => q.usable && matchesBasicFilters(q));
+}
 
-  const preset = {
-    'latest-jan': latestJan
-      ? { year: String(latestJan.year), session: latestJan.session, practice: 'ALL', type: 'ALL' }
-      : null,
-    'latest-july': latestJuly
-      ? { year: String(latestJuly.year), session: latestJuly.session, practice: 'ALL', type: 'ALL' }
-      : null,
-    'mixed-2025': { year: '2025', session: 'ALL', practice: 'ALL', type: 'ALL' },
-    'all-years': { year: 'ALL', session: 'ALL', practice: 'ALL', type: 'ALL' },
-    code: { year: 'ALL', session: 'ALL', practice: 'coding', type: 'ALL' },
-    tf: { year: 'ALL', session: 'ALL', practice: 'ALL', type: 'true_false' }
-  }[key];
-
-  if (!preset) return;
-
-  dom.yearSelect.value = preset.year;
+function setMockDefaults() {
+  dom.yearSelect.value = 'ALL';
   populateSessionOptions();
-  dom.sessionSelect.value = preset.session;
+  dom.sessionSelect.value = 'ALL';
   populateWeekOptions();
   dom.weekSelect.value = 'ALL';
-  dom.practiceSelect.value = preset.practice;
-  dom.typeSelect.value = preset.type;
-
-  sanitizeFilters();
-  saveSettings();
-  updateBuilderStatus();
-  showPage('build');
+  dom.typeSelect.value = 'ALL';
+  dom.countSelect.value = '30';
+  dom.timerSelect.value = '60';
+  dom.shuffleOptions.checked = false;
+  dom.practiceMode.checked = false;
+  updateMockPool();
 }
 
-function updateStats() {
-  const total = state.allQuestions.length;
-  const removed = state.allQuestions.filter((question) => question.removed).length;
-  const imageHidden = state.allQuestions.filter((question) => !question.removed && question.blockedVisual).length;
-  const active = state.allQuestions.filter((question) => !question.removed && !question.blockedVisual).length;
-  const coding = state.allQuestions.filter(
-    (question) => !question.removed && !question.blockedVisual && question.practiceTag === 'coding'
-  ).length;
-  const years = new Set(state.allQuestions.map((question) => question.year)).size;
-  const types = new Set(state.allQuestions.map((question) => question.varietyTag)).size;
-
-  state.summary = { total, active, blockedVisual: imageHidden, coding, removed };
-
-  if (dom.totalQuestionsStat) dom.totalQuestionsStat.textContent = String(total);
-  if (dom.usableQuestionsStat) dom.usableQuestionsStat.textContent = String(active);
-  if (dom.imagePendingStat) dom.imagePendingStat.textContent = String(imageHidden);
-  if (dom.historyStat) dom.historyStat.textContent = String(state.history.length);
-  if (dom.yearsStat) dom.yearsStat.textContent = String(years);
-  if (dom.typesStat) dom.typesStat.textContent = String(types);
-  if (dom.drawerLoadedStat) dom.drawerLoadedStat.textContent = String(total);
-  if (dom.drawerCodingStat) dom.drawerCodingStat.textContent = String(coding);
-  if (dom.historyBadge) dom.historyBadge.textContent = `${state.history.length} attempt${state.history.length === 1 ? '' : 's'}`;
+function startLatestPyq() {
+  const latest = [...state.banks].sort(sortBankDesc)[0];
+  if (!latest) return alert('No valid PYQ set is available.');
+  startPyq(latest.file, 'ALL', false);
 }
 
-function updateBuilderStatus() {
-  const pool = getFilteredPool();
-  const conceptual = pool.filter((question) => question.practiceTag === 'conceptual').length;
-  const coding = pool.filter((question) => question.practiceTag === 'coding').length;
-  const imageRequired = pool.filter((question) => question.blockedVisual).length;
+function startPyq(file, weekValue = 'ALL', practiceMode = false) {
+  const bank = state.banks.find((b) => b.file === file);
+  if (!bank) return alert('This dataset is unavailable or quarantined.');
 
-  const summary = `Pool ready: ${pool.length} question${pool.length === 1 ? '' : 's'} · conceptual ${conceptual} · coding ${coding} · image-required ${imageRequired}`;
+  const week = weekValue === 'ALL' ? null : Number(weekValue);
+  const pool = bank.questions
+    .filter((q) => q.usable)
+    .filter((q) => !week || q.week === week)
+    .sort((a, b) => (a.week - b.week) || (a.qNum - b.qNum));
 
-  if (dom.builderStatus) dom.builderStatus.textContent = summary;
-  if (dom.homeSummaryText) dom.homeSummaryText.textContent = summary;
-  if (dom.startTestBtn) dom.startTestBtn.disabled = pool.length === 0;
+  if (!pool.length) return alert('No usable non-image questions are available in this selection.');
 
-  if (dom.currentPageBadge && ['home', 'build'].includes(state.currentPage)) {
-    dom.currentPageBadge.textContent = pool.length ? `${pool.length} ready` : 'No match';
-  }
-}
-
-function renderHome() {
-  if (!state.manifest || !dom.homeDatasetsGrid) return;
-  const latestFirst = sortDatasets(state.manifest.datasets);
-  dom.homeDatasetsGrid.innerHTML = latestFirst.map((dataset) => buildDatasetCard(dataset, true)).join('');
-  bindDatasetButtons(dom.homeDatasetsGrid);
-}
-
-function renderDatasetsPage() {
-  if (!state.manifest || !dom.dataPageGrid) return;
-  const latestFirst = sortDatasets(state.manifest.datasets);
-  dom.dataPageGrid.innerHTML = latestFirst.map((dataset) => buildDatasetCard(dataset, false)).join('');
-  bindDatasetButtons(dom.dataPageGrid);
-  if (dom.manifestBadge) dom.manifestBadge.textContent = `${latestFirst.length} files`;
-}
-
-function buildDatasetCard(dataset, compact = false) {
-  const runtime = getDatasetRuntimeSummary(dataset);
-  const readyNoImages = runtime.ready;
-  const blocked = runtime.imageRequired;
-
-  const metaBits = compact
-    ? [
-        `<span class="badge subtle">${readyNoImages} ready</span>`,
-        `<span class="badge subtle">${runtime.coding} coding</span>`
-      ]
-    : [
-        `<span class="badge subtle">${runtime.total} total</span>`,
-        `<span class="badge subtle">${readyNoImages} ready</span>`,
-        `<span class="badge subtle">${runtime.coding} coding</span>`,
-        `<span class="badge subtle">${blocked} image-required</span>`
-      ];
-
-  return `
-    <article class="dataset-card ${compact ? 'dataset-card-compact' : ''}">
-      <div class="dataset-top-row">
-        <div>
-          <h4>${escapeHtml(buildDatasetTitle(dataset))}</h4>
-          ${
-            compact
-              ? `<div class="muted small-text">Session loaded</div>`
-              : `<div class="muted small-text">${escapeHtml(dataset.file)}</div>`
-          }
-        </div>
-        <button class="ghost-btn small-btn" type="button" data-use-year="${dataset.year}" data-use-session="${escapeHtml(dataset.session)}">Use</button>
-      </div>
-      <div class="dataset-meta">
-        ${metaBits.join('')}
-      </div>
-    </article>
-  `;
-}
-
-function bindDatasetButtons(root) {
-  if (!root) return;
-  root.querySelectorAll('[data-use-year][data-use-session]').forEach((button) => {
-    on(button, 'click', () => applyDatasetSelection(button.dataset.useYear, button.dataset.useSession));
+  createTest({
+    mode: practiceMode ? 'practice' : 'pyq',
+    title: `${bank.year} ${bank.session}${week ? ` · Week ${week}` : ' · Full PYQ'}`,
+    questions: pool,
+    timerMinutes: 0,
+    shuffleOptions: false,
+    allowSolutionCheck: practiceMode,
+    sourceDescription: `${pool.length} questions · original PYQ order`
   });
 }
 
-function applyDatasetSelection(year, session) {
-  dom.yearSelect.value = String(year);
-  populateSessionOptions();
-  dom.sessionSelect.value = session;
-  populateWeekOptions();
-  dom.weekSelect.value = 'ALL';
+function startMock() {
+  const pool = getMockPool();
+  if (!pool.length) return alert('No usable questions match the filters.');
 
-  sanitizeFilters();
-  saveSettings();
-  updateBuilderStatus();
-  showPage('build');
-}
+  const requested = Number(dom.countSelect.value) || 30;
+  const count = Math.min(requested, CONFIG.maxQuestions, pool.length);
+  const selected = balancedSample(pool, count);
 
-function getFilteredPool() {
-  const settings = readFilterSettings();
-  const search = normalizeText(settings.search);
-
-  return state.allQuestions.filter((question) => {
-    if (settings.year !== 'ALL' && String(question.year) !== String(settings.year)) return false;
-    if (settings.session !== 'ALL' && String(question.session) !== String(settings.session)) return false;
-    if (settings.week !== 'ALL' && String(question.week) !== String(settings.week)) return false;
-    if (settings.type !== 'ALL' && String(question.varietyTag) !== String(settings.type)) return false;
-    if (settings.practice !== 'ALL' && String(question.practiceTag) !== String(settings.practice)) return false;
-    if (settings.hideRemoved && question.removed) return false;
-    if (settings.hideImagePending && question.blockedVisual) return false;
-    if (search && !question.searchBlob.includes(search)) return false;
-    return true;
+  createTest({
+    mode: dom.practiceMode.checked ? 'practice' : 'mock',
+    title: buildMockTitle(count),
+    questions: selected,
+    timerMinutes: Number(dom.timerSelect.value) || 0,
+    shuffleOptions: dom.shuffleOptions.checked,
+    allowSolutionCheck: dom.practiceMode.checked,
+    sourceDescription: `${count} questions · balanced mixed selection`
   });
 }
 
-function startTest() {
-  const settings = readFilterSettings();
-  let pool = getFilteredPool();
-
-  if (!pool.length) {
-    window.alert('No questions match the current filters.');
-    return;
+function createTest({ mode, title, questions, timerMinutes, shuffleOptions, allowSolutionCheck, sourceDescription }) {
+  if (state.activeTest && !state.activeTest.submitted) {
+    const replace = confirm('A saved test already exists. Replace it with this new test?');
+    if (!replace) return;
   }
 
-  if (settings.shuffleQuestions) pool = shuffle([...pool]);
-
-  const count = Math.min(Number(settings.count) || 15, APP_CONFIG.maxTestQuestions, pool.length);
-  const selected = pool.slice(0, count).map((question) => ({
-    ...question,
-    options: settings.shuffleOptions ? shuffle([...(question.options || [])]) : [...(question.options || [])]
+  const prepared = questions.map((q) => ({
+    ...q,
+    options: shuffleOptions ? shuffleArray([...q.options]) : [...q.options]
   }));
 
   state.activeTest = {
-    startedAt: new Date().toISOString(),
-    settings,
-    title: buildTestTitle(settings, count),
-    questions: selected,
+    version: 2,
+    mode,
+    title,
+    sourceDescription,
+    startedAt: Date.now(),
+    timerMinutes,
+    questions: prepared,
     currentIndex: 0,
     answers: {},
-    checked: {},
-    submitted: false,
-    result: null
+    marked: {},
+    visited: { [prepared[0].runtimeId]: true },
+    solutionChecked: {},
+    submitted: false
   };
-
   persistActiveTest();
-  renderActiveTest();
+  renderTest();
+  startTimerLoop();
   showPage('test');
 }
 
-function buildTestTitle(settings, count) {
-  const bits = [];
-  if (settings.year !== 'ALL') bits.push(settings.year);
-  if (settings.session !== 'ALL') bits.push(formatSession(settings.session));
-  if (settings.practice !== 'ALL') bits.push(formatType(settings.practice));
-  if (settings.type !== 'ALL') bits.push(formatType(settings.type));
-  return `${bits.length ? bits.join(' · ') : 'Mixed Practice'} · ${count} Questions`;
+function balancedSample(pool, count) {
+  const groups = new Map();
+  for (const q of pool) {
+    const key = `${q.file}::W${q.week || 0}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(q);
+  }
+
+  const buckets = [...groups.values()].map((items) => shuffleArray([...items]));
+  shuffleArray(buckets);
+  const result = [];
+  let cursor = 0;
+
+  while (result.length < count && buckets.some((b) => b.length)) {
+    const bucket = buckets[cursor % buckets.length];
+    if (bucket.length) result.push(bucket.pop());
+    cursor += 1;
+  }
+  return result;
+}
+
+function buildMockTitle(count) {
+  const parts = [];
+  if (dom.yearSelect.value !== 'ALL') parts.push(dom.yearSelect.value);
+  if (dom.sessionSelect.value !== 'ALL') parts.push(dom.sessionSelect.value);
+  if (dom.weekSelect.value !== 'ALL') parts.push(`Week ${dom.weekSelect.value}`);
+  if (dom.typeSelect.value !== 'ALL') parts.push(formatType(dom.typeSelect.value));
+  return `${parts.length ? parts.join(' · ') : 'Mixed Mock'} · ${count} Questions`;
+}
+
+function restoreActiveTest(navigate = true) {
+  const saved = safeJsonParse(localStorage.getItem(CONFIG.storage.activeTest), null);
+  if (!saved?.questions?.length || saved.submitted) {
+    if (navigate) alert('No saved active test found.');
+    updateResumeButton();
+    return false;
+  }
+  state.activeTest = saved;
+  renderTest();
+  startTimerLoop();
+  updateResumeButton();
+  if (navigate) showPage('test');
+  return true;
 }
 
 function persistActiveTest() {
-  localStorage.setItem(APP_CONFIG.storage.activeTest, JSON.stringify(state.activeTest));
-}
-
-function restoreActiveTest(shouldNavigate = true) {
+  if (!state.activeTest) return;
   try {
-    const saved = JSON.parse(localStorage.getItem(APP_CONFIG.storage.activeTest) || 'null');
-    if (!saved || !saved.questions?.length) {
-      toggleTestEmptyState(true);
-      return false;
-    }
-    state.activeTest = saved;
-    renderActiveTest();
-    if (shouldNavigate) showPage('test');
-    return true;
-  } catch {
-    toggleTestEmptyState(true);
-    return false;
+    localStorage.setItem(CONFIG.storage.activeTest, JSON.stringify(state.activeTest));
+  } catch (error) {
+    console.error('Could not persist active test', error);
   }
+  updateResumeButton();
 }
 
-function toggleTestEmptyState(isEmpty) {
-  if (dom.testPanel) dom.testPanel.classList.toggle('hidden', isEmpty);
-  if (dom.testEmptyState) dom.testEmptyState.classList.toggle('hidden', !isEmpty);
+function updateResumeButton() {
+  const saved = safeJsonParse(localStorage.getItem(CONFIG.storage.activeTest), null);
+  const available = Boolean(saved?.questions?.length && !saved.submitted);
+  dom.resumeBtn.disabled = !available;
+  dom.resumeLabel.textContent = available ? `${saved.title || 'Saved test'} · Q${Number(saved.currentIndex || 0) + 1}` : 'No saved test';
 }
 
-function renderActiveTest() {
-  if (!state.activeTest?.questions?.length) {
-    toggleTestEmptyState(true);
+function renderTest() {
+  const test = state.activeTest;
+  if (!test?.questions?.length) {
+    dom.testEmpty.classList.remove('hidden');
+    dom.testShell.classList.add('hidden');
     return;
   }
+  dom.testEmpty.classList.add('hidden');
+  dom.testShell.classList.remove('hidden');
 
-  toggleTestEmptyState(false);
+  const index = clamp(test.currentIndex, 0, test.questions.length - 1);
+  test.currentIndex = index;
+  const q = test.questions[index];
+  test.visited[q.runtimeId] = true;
 
-  const total = state.activeTest.questions.length;
-  const answered = Object.values(state.activeTest.answers).filter(hasAnswer).length;
-  const current = state.activeTest.questions[state.activeTest.currentIndex];
+  dom.testModeLabel.textContent = test.mode === 'pyq' ? 'PYQ exam mode' : test.mode === 'practice' ? 'Practice mode' : 'Mixed mock';
+  dom.testTitle.textContent = test.title;
+  dom.testMeta.textContent = test.sourceDescription || '';
+  dom.questionNo.textContent = `Question ${index + 1} of ${test.questions.length}`;
+  dom.questionSource.textContent = q.sourceLabel;
+  dom.prevBtn.disabled = index === 0;
+  dom.nextBtn.textContent = index === test.questions.length - 1 ? 'Save response' : 'Save & Next →';
+  dom.markBtn.textContent = test.marked[q.runtimeId] ? '★ Marked for review' : '☆ Mark for review';
+  dom.checkBtn.classList.toggle('hidden', !test.allowSolutionCheck);
 
-  if (dom.testTitle) dom.testTitle.textContent = state.activeTest.title;
-  if (dom.testMeta) {
-    dom.testMeta.textContent = `${current.year} ${formatSession(current.session)} · ${current.week_label || `Week ${current.week}`} · ${formatType(current.varietyTag)}`;
-  }
-  if (dom.progressChip) dom.progressChip.textContent = `${state.activeTest.currentIndex + 1} / ${total}`;
-  if (dom.answeredCountBadge) dom.answeredCountBadge.textContent = `${answered} answered`;
-  if (dom.progressBar) dom.progressBar.style.width = `${((state.activeTest.currentIndex + 1) / total) * 100}%`;
-  if (dom.questionCard) dom.questionCard.innerHTML = buildQuestionHtml(current);
-
-  bindQuestionOptionEvents(current);
-  bindSwipeEvents();
-  renderQuestionPalette();
+  renderQuestion(q);
+  renderPalette();
+  renderExamStats();
+  renderTimer();
+  persistActiveTest();
 }
 
-function buildQuestionHtml(question) {
-  const selectedValue = state.activeTest.answers[question.id] || '';
-  const checked = Boolean(state.activeTest.checked[question.id]);
-  const solutionModeEnabled = state.activeTest.settings.showSolutions;
-  const shouldReveal = checked;
-  const canCheckSolution = solutionModeEnabled && hasAnswer(selectedValue) && !checked;
-
-  const meta = [
-    question.display_no,
-    formatType(question.varietyTag),
-    `${question.marks || 1} mark`
-  ];
-
-  let imageBlock = '';
-  if (question.blockedVisual) {
-    imageBlock = `<div class="inline-warning">This question depends on an image asset. Keep “Hide image-required questions” enabled unless matching files are added in <code>/images</code>.</div>`;
-  }
-
-  const optionHtml = (question.options || [])
-    .map((option) => {
-      const isSelected = String(selectedValue) === String(option.key);
-      const isCorrect = question.answerKeys.includes(String(option.key));
-      const classes = ['option-btn'];
-
-      if (isSelected) classes.push('selected');
-      if (shouldReveal && isCorrect) classes.push('correct');
-      if (shouldReveal && isSelected && !isCorrect) classes.push('wrong');
-
-      return `
-      <button class="${classes.join(' ')}" type="button" data-option-key="${escapeHtml(option.key)}" ${checked ? 'disabled' : ''}>
-        <span class="option-key">${escapeHtml(String(option.key).toUpperCase())}</span>
-        <span>${escapeHtml(option.text || '')}</span>
-      </button>
-    `;
-    })
-    .join('');
-
-  const solutionActionBlock = solutionModeEnabled
-    ? `
-    <div class="question-action-row">
-      ${canCheckSolution ? `<button class="primary-btn small-btn" type="button" data-check-solution="${escapeHtml(question.id)}">Check solution</button>` : ''}
-      ${!checked && hasAnswer(selectedValue) ? `<button class="ghost-btn small-btn" type="button" data-clear-answer="${escapeHtml(question.id)}">Clear answer</button>` : ''}
-      ${checked ? `<span class="inline-state-pill">Solution checked</span>` : ''}
-    </div>
-  `
-    : '';
-
-  const answerBlock = shouldReveal
-    ? `<div class="inline-answer"><strong>Correct answer:</strong> ${escapeHtml(question.answerDisplay || '—')}</div>`
-    : '';
-  const referenceBlock =
-    state.activeTest.settings.showReference && question.reference
-      ? `<div class="inline-reference"><strong>Reference:</strong> ${escapeHtml(question.reference)}</div>`
-      : '';
-  const solutionBlock =
-    shouldReveal && question.detailed_solution
-      ? `<div class="inline-reference"><strong>Explanation:</strong> ${escapeHtml(question.detailed_solution)}</div>`
-      : '';
-
-  return `
-    <div class="question-meta">
-      ${meta.map((item) => `<span class="meta-chip">${escapeHtml(item)}</span>`).join('')}
-    </div>
-    <div class="question-text">${escapeHtml(question.question || 'Untitled question')}</div>
-    ${question.code_block ? `<pre class="code-block"><code>${escapeHtml(question.code_block)}</code></pre>` : ''}
-    ${imageBlock}
-    <div class="options-list">${optionHtml}</div>
-    ${solutionActionBlock}
-    ${answerBlock}
-    ${solutionBlock}
-    ${referenceBlock}
-  `;
-}
-
-function bindQuestionOptionEvents(question) {
-  dom.questionCard?.querySelectorAll('[data-option-key]').forEach((button) => {
-    on(button, 'click', () => selectOption(question, button.dataset.optionKey));
-  });
-  dom.questionCard?.querySelectorAll('[data-check-solution]').forEach((button) => {
-    on(button, 'click', () => checkSolution(question.id));
-  });
-  dom.questionCard?.querySelectorAll('[data-clear-answer]').forEach((button) => {
-    on(button, 'click', () => clearAnswer(question.id));
-  });
-}
-
-let touchStartX = null;
-
-function bindSwipeEvents() {
-  if (!dom.questionCard) return;
-
-  dom.questionCard.ontouchstart = (event) => {
-    touchStartX = event.changedTouches[0].screenX;
-  };
-
-  dom.questionCard.ontouchend = (event) => {
-    if (touchStartX === null) return;
-    const diff = event.changedTouches[0].screenX - touchStartX;
-    if (Math.abs(diff) > 55) {
-      if (diff < 0) moveQuestion(1);
-      else moveQuestion(-1);
+function renderQuestion(q) {
+  const selected = normalizeSelected(state.activeTest.answers[q.runtimeId]);
+  const checked = Boolean(state.activeTest.solutionChecked[q.runtimeId]);
+  const optionHtml = q.options.map((option) => {
+    const chosen = selected.includes(option.key);
+    const isCorrectKey = q.answerKeys.includes(option.key);
+    let statusClass = chosen ? 'selected' : '';
+    if (checked) {
+      if (isCorrectKey) statusClass += ' correct';
+      else if (chosen) statusClass += ' wrong';
     }
-    touchStartX = null;
-  };
+    return `
+      <button class="option ${statusClass.trim()}" type="button" data-option="${escapeAttr(option.key)}">
+        <span class="option-key">${escapeHtml(option.key)}</span>
+        <span>${escapeHtml(option.text)}</span>
+      </button>`;
+  }).join('');
+
+  const instruction = q.isMulti ? '<div class="muted">Select all correct options.</div>' : '';
+  const solution = checked ? `
+    <div class="solution-box">
+      <div class="answer">Correct answer: ${escapeHtml(q.answerDisplay || q.answerKeys.join(', '))}</div>
+      ${q.solution ? `<div>${escapeHtml(q.solution)}</div>` : ''}
+      ${q.reference ? `<div class="muted">Reference: ${escapeHtml(q.reference)}</div>` : ''}
+    </div>` : '';
+
+  dom.questionBody.innerHTML = `
+    <div class="question-text">${escapeHtml(q.question)}</div>
+    ${q.codeBlock ? `<pre class="code-block"><code>${escapeHtml(q.codeBlock)}</code></pre>` : ''}
+    ${instruction}
+    <div class="options">${optionHtml}</div>
+    ${solution}`;
+
+  dom.questionBody.querySelectorAll('[data-option]').forEach((button) => {
+    button.addEventListener('click', () => selectOption(q, button.dataset.option));
+  });
 }
 
-function selectOption(question, key) {
-  if (!state.activeTest) return;
-  state.activeTest.answers[question.id] = key;
-  if (state.activeTest.checked[question.id]) delete state.activeTest.checked[question.id];
+function selectOption(q, key) {
+  const test = state.activeTest;
+  if (!test) return;
+  let selected = normalizeSelected(test.answers[q.runtimeId]);
+
+  if (q.isMulti) {
+    selected = selected.includes(key) ? selected.filter((k) => k !== key) : [...selected, key];
+  } else {
+    selected = [key];
+  }
+
+  if (selected.length) test.answers[q.runtimeId] = selected;
+  else delete test.answers[q.runtimeId];
+  delete test.solutionChecked[q.runtimeId];
   persistActiveTest();
-  renderActiveTest();
+  renderTest();
 }
 
-function checkSolution(questionId) {
-  if (!state.activeTest) return;
-  const currentQuestion = state.activeTest.questions.find((item) => item.id === questionId);
-  if (!currentQuestion) return;
-  if (!hasAnswer(state.activeTest.answers[questionId])) return;
-
-  state.activeTest.checked[questionId] = true;
+function clearCurrentResponse() {
+  const q = currentQuestion();
+  if (!q) return;
+  delete state.activeTest.answers[q.runtimeId];
+  delete state.activeTest.solutionChecked[q.runtimeId];
   persistActiveTest();
-  renderActiveTest();
+  renderTest();
 }
 
-function clearAnswer(questionId) {
-  if (!state.activeTest) return;
-  delete state.activeTest.answers[questionId];
-  delete state.activeTest.checked[questionId];
+function toggleCurrentReview() {
+  const q = currentQuestion();
+  if (!q) return;
+  if (state.activeTest.marked[q.runtimeId]) delete state.activeTest.marked[q.runtimeId];
+  else state.activeTest.marked[q.runtimeId] = true;
   persistActiveTest();
-  renderActiveTest();
+  renderTest();
+}
+
+function checkCurrentSolution() {
+  const q = currentQuestion();
+  if (!q) return;
+  if (!normalizeSelected(state.activeTest.answers[q.runtimeId]).length) {
+    alert('Select an answer first.');
+    return;
+  }
+  state.activeTest.solutionChecked[q.runtimeId] = true;
+  persistActiveTest();
+  renderTest();
 }
 
 function moveQuestion(delta) {
-  if (!state.activeTest) return;
-  const total = state.activeTest.questions.length;
-  state.activeTest.currentIndex = Math.max(
-    0,
-    Math.min(total - 1, state.activeTest.currentIndex + delta)
-  );
+  const test = state.activeTest;
+  if (!test) return;
+  const next = clamp(test.currentIndex + delta, 0, test.questions.length - 1);
+  if (next === test.currentIndex) return;
+  test.currentIndex = next;
+  test.visited[test.questions[next].runtimeId] = true;
   persistActiveTest();
-  renderActiveTest();
+  renderTest();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function jumpToQuestion(index) {
-  if (!state.activeTest) return;
-  state.activeTest.currentIndex = index;
-  persistActiveTest();
-  renderActiveTest();
-}
+function renderPalette() {
+  const test = state.activeTest;
+  dom.questionPalette.innerHTML = test.questions.map((q, index) => {
+    const answered = normalizeSelected(test.answers[q.runtimeId]).length > 0;
+    const review = Boolean(test.marked[q.runtimeId]);
+    const current = index === test.currentIndex;
+    const classes = [answered ? 'answered' : '', review ? 'review' : '', current ? 'current' : ''].filter(Boolean).join(' ');
+    const label = review ? 'Marked for review' : answered ? 'Answered' : test.visited[q.runtimeId] ? 'Not answered' : 'Not visited';
+    return `<button class="palette-btn ${classes}" type="button" data-index="${index}" title="Question ${index + 1}: ${label}">${index + 1}</button>`;
+  }).join('');
 
-function renderQuestionPalette() {
-  if (!state.activeTest || !dom.questionPalette) return;
-
-  dom.questionPalette.innerHTML = state.activeTest.questions
-    .map((question, index) => {
-      const classes = ['palette-btn'];
-      if (index === state.activeTest.currentIndex) classes.push('current');
-      if (hasAnswer(state.activeTest.answers[question.id])) classes.push('answered');
-      return `<button class="${classes.join(' ')}" type="button" data-jump-index="${index}">${index + 1}</button>`;
-    })
-    .join('');
-
-  dom.questionPalette.querySelectorAll('[data-jump-index]').forEach((button) => {
-    on(button, 'click', () => jumpToQuestion(Number(button.dataset.jumpIndex)));
+  dom.questionPalette.querySelectorAll('[data-index]').forEach((button) => {
+    button.addEventListener('click', () => {
+      state.activeTest.currentIndex = Number(button.dataset.index);
+      renderTest();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
   });
 }
 
-function hasAnswer(value) {
-  return value !== undefined && value !== null && String(value).trim() !== '';
+function renderExamStats() {
+  const test = state.activeTest;
+  const answered = test.questions.filter((q) => normalizeSelected(test.answers[q.runtimeId]).length > 0).length;
+  const review = test.questions.filter((q) => Boolean(test.marked[q.runtimeId])).length;
+  const unanswered = test.questions.length - answered;
+  dom.answeredStat.textContent = String(answered);
+  dom.reviewStat.textContent = String(review);
+  dom.unansweredStat.textContent = String(unanswered);
+  dom.testProgress.style.width = `${Math.round((answered / test.questions.length) * 100)}%`;
 }
 
-function quitTest() {
+function startTimerLoop() {
+  stopTimerLoop();
+  renderTimer();
+  if (!state.activeTest?.timerMinutes) return;
+  state.timerHandle = window.setInterval(() => {
+    if (!state.activeTest) return stopTimerLoop();
+    const remaining = getRemainingSeconds(state.activeTest);
+    renderTimer();
+    if (remaining <= 0) {
+      stopTimerLoop();
+      submitTest(true);
+    }
+  }, 1000);
+}
+
+function stopTimerLoop() {
+  if (state.timerHandle) window.clearInterval(state.timerHandle);
+  state.timerHandle = null;
+}
+
+function getRemainingSeconds(test) {
+  if (!test?.timerMinutes) return null;
+  const elapsed = Math.floor((Date.now() - Number(test.startedAt)) / 1000);
+  return Math.max(0, test.timerMinutes * 60 - elapsed);
+}
+
+function renderTimer() {
+  const test = state.activeTest;
+  if (!test?.timerMinutes) {
+    dom.timerBox.classList.add('hidden');
+    return;
+  }
+  dom.timerBox.classList.remove('hidden');
+  const remaining = getRemainingSeconds(test);
+  const min = Math.floor(remaining / 60);
+  const sec = remaining % 60;
+  dom.timerText.textContent = `${pad2(min)}:${pad2(sec)}`;
+  dom.timerBox.classList.toggle('warning', remaining <= 300);
+}
+
+function submitTest(autoSubmitted) {
+  const test = state.activeTest;
+  if (!test) return;
+
+  const unanswered = test.questions.filter((q) => !normalizeSelected(test.answers[q.runtimeId]).length).length;
+  if (!autoSubmitted) {
+    const msg = unanswered
+      ? `${unanswered} question(s) are unanswered. Submit anyway?`
+      : 'Submit this test now?';
+    if (!confirm(msg)) return;
+  }
+
+  const review = test.questions.map((q) => {
+    const selected = normalizeSelected(test.answers[q.runtimeId]);
+    const correct = sameSet(selected, q.answerKeys);
+    return {
+      runtimeId: q.runtimeId,
+      sourceId: q.sourceId,
+      sourceLabel: q.sourceLabel,
+      question: q.question,
+      codeBlock: q.codeBlock,
+      options: q.options,
+      selected,
+      correctKeys: q.answerKeys,
+      correctAnswer: q.answerDisplay,
+      solution: q.solution,
+      reference: q.reference,
+      marks: q.marks,
+      correct,
+      answered: selected.length > 0
+    };
+  });
+
+  const score = review.reduce((sum, item) => sum + (item.correct ? item.marks : 0), 0);
+  const total = review.reduce((sum, item) => sum + item.marks, 0);
+  const correct = review.filter((x) => x.correct).length;
+  const answered = review.filter((x) => x.answered).length;
+  const wrong = review.filter((x) => x.answered && !x.correct).length;
+  const result = {
+    id: `attempt_${Date.now()}`,
+    title: test.title,
+    mode: test.mode,
+    submittedAt: Date.now(),
+    autoSubmitted: Boolean(autoSubmitted),
+    score,
+    total,
+    percent: total ? Math.round((score / total) * 100) : 0,
+    correct,
+    wrong,
+    unanswered: review.length - answered,
+    questionCount: review.length,
+    review
+  };
+
+  state.lastResult = result;
+  state.history.unshift(compactHistoryRecord(result));
+  state.history = state.history.slice(0, CONFIG.historyLimit);
+
+  localStorage.setItem(CONFIG.storage.lastResult, JSON.stringify(result));
+  localStorage.setItem(CONFIG.storage.history, JSON.stringify(state.history));
+  localStorage.removeItem(CONFIG.storage.activeTest);
+  stopTimerLoop();
+  state.activeTest = null;
+  updateResumeButton();
+  renderLastResult();
+  renderHistory();
+  showPage('results');
+}
+
+function compactHistoryRecord(result) {
+  return {
+    id: result.id,
+    title: result.title,
+    mode: result.mode,
+    submittedAt: result.submittedAt,
+    score: result.score,
+    total: result.total,
+    percent: result.percent,
+    correct: result.correct,
+    wrong: result.wrong,
+    unanswered: result.unanswered,
+    questionCount: result.questionCount
+  };
+}
+
+function saveAndClose() {
   if (!state.activeTest) return;
   persistActiveTest();
   showPage('home');
 }
 
-function submitTest() {
-  if (!state.activeTest) return;
-
-  const scored = state.activeTest.questions.map((question) => {
-    const selected = state.activeTest.answers[question.id] || '';
-    const correct = question.answerKeys.includes(String(selected));
-    return { question, selected, correct };
-  });
-
-  const score = scored
-    .filter((item) => item.correct)
-    .reduce((sum, item) => sum + (item.question.marks || 1), 0);
-  const total = scored.reduce((sum, item) => sum + (item.question.marks || 1), 0);
-  const percent = total ? Math.round((score / total) * 100) : 0;
-
-  const record = {
-    id: `attempt_${Date.now()}`,
-    title: state.activeTest.title,
-    startedAt: state.activeTest.startedAt,
-    submittedAt: new Date().toISOString(),
-    score,
-    total,
-    percent,
-    questionCount: state.activeTest.questions.length,
-    settings: state.activeTest.settings,
-    review: scored.map((item) => ({
-      id: item.question.id,
-      question: item.question.question,
-      questionLabel: item.question.display_no,
-      selected: item.selected,
-      selectedText: resolveOptionText(item.question, item.selected),
-      correctKeys: item.question.answerKeys,
-      correctAnswer: item.question.answerDisplay,
-      reference: item.question.reference || '',
-      detailedSolution: item.question.detailed_solution || '',
-      correct: item.correct,
-      practiceTag: item.question.practiceTag,
-      varietyTag: item.question.varietyTag,
-      codeBlock: item.question.code_block || ''
-    }))
-  };
-
-  state.history.unshift(record);
-  state.history = state.history.slice(0, 50);
-  saveHistory();
-  localStorage.removeItem(APP_CONFIG.storage.activeTest);
-  state.activeTest = null;
-  renderHistory();
-  renderResults(record);
-  updateStats();
-  showPage('results');
-}
-
-function renderResults(record) {
-  if (!record) {
-    dom.resultsPanel?.classList.add('hidden');
-    dom.resultsEmptyState?.classList.remove('hidden');
+function renderLastResult() {
+  const r = state.lastResult;
+  if (!r) {
+    dom.resultsEmpty.classList.remove('hidden');
+    dom.resultsShell.classList.add('hidden');
     return;
   }
 
-  dom.resultsPanel?.classList.remove('hidden');
-  dom.resultsEmptyState?.classList.add('hidden');
-
-  if (dom.scoreBadge) dom.scoreBadge.textContent = `${record.score} / ${record.total}`;
-
-  if (dom.resultsSummary) {
-    dom.resultsSummary.innerHTML = `
-      <article class="summary-card"><strong>${record.percent}%</strong><div class="muted">Score percentage</div></article>
-      <article class="summary-card"><strong>${record.questionCount}</strong><div class="muted">Questions attempted</div></article>
-      <article class="summary-card"><strong>${record.review.filter((item) => item.correct).length}</strong><div class="muted">Correct answers</div></article>
-    `;
-  }
-
-  if (dom.reviewList) {
-    dom.reviewList.innerHTML = record.review
-      .map(
-        (item) => `
-      <article class="review-item">
-        <h4>${escapeHtml(item.questionLabel)} · ${escapeHtml(formatType(item.varietyTag))} · ${escapeHtml(formatType(item.practiceTag))}</h4>
-        <div class="muted">${escapeHtml(item.question)}</div>
+  dom.resultsEmpty.classList.add('hidden');
+  dom.resultsShell.classList.remove('hidden');
+  dom.resultTitle.textContent = r.title;
+  dom.resultScore.textContent = `${r.score} / ${r.total}`;
+  dom.resultPercent.textContent = `${r.percent}%`;
+  dom.resultCorrect.textContent = String(r.correct);
+  dom.resultWrong.textContent = String(r.wrong);
+  dom.resultUnanswered.textContent = String(r.unanswered);
+  dom.reviewList.innerHTML = (r.review || []).map((item, index) => {
+    const statusClass = !item.answered ? 'unanswered' : item.correct ? 'good' : 'bad';
+    const statusText = !item.answered ? 'Unanswered' : item.correct ? 'Correct' : 'Incorrect';
+    const yourAnswer = item.selected?.length
+      ? item.selected.map((key) => `${key.toUpperCase()}. ${resolveOptionText(item.options, key)}`).join(' | ')
+      : 'Not answered';
+    const correctAnswer = item.correctKeys?.map((key) => `${key.toUpperCase()}. ${resolveOptionText(item.options, key)}`).join(' | ') || item.correctAnswer || '—';
+    return `
+      <article class="review-item ${statusClass}">
+        <h4>Q${index + 1} · ${escapeHtml(item.sourceLabel || '')} · ${statusText}</h4>
+        <div>${escapeHtml(item.question)}</div>
         ${item.codeBlock ? `<pre class="code-block"><code>${escapeHtml(item.codeBlock)}</code></pre>` : ''}
-        <div class="review-answer-row">
-          <div class="answer-line ${item.correct ? 'status-good' : 'status-bad'}">${item.correct ? 'Correct' : 'Incorrect'}</div>
-          <div class="answer-line"><strong>Your answer:</strong> ${escapeHtml(item.selectedText || item.selected || 'Not answered')}</div>
-          <div class="answer-line"><strong>Correct answer:</strong> ${escapeHtml(item.correctAnswer || '—')}</div>
-          ${item.detailedSolution ? `<div class="answer-line"><strong>Explanation:</strong> ${escapeHtml(item.detailedSolution)}</div>` : ''}
-          ${item.reference ? `<div class="answer-line"><strong>Reference:</strong> ${escapeHtml(item.reference)}</div>` : ''}
+        <div class="review-lines">
+          <div><strong>Your answer:</strong> ${escapeHtml(yourAnswer)}</div>
+          <div><strong>Correct answer:</strong> ${escapeHtml(correctAnswer)}</div>
         </div>
-      </article>
-    `
-      )
-      .join('');
-  }
-}
-
-function renderResultsFromLastAttempt() {
-  renderResults(state.history[0] || null);
+        ${item.solution ? `<div class="review-solution"><strong>Explanation:</strong> ${escapeHtml(item.solution)}</div>` : ''}
+        ${item.reference ? `<div class="muted">Reference: ${escapeHtml(item.reference)}</div>` : ''}
+      </article>`;
+  }).join('');
 }
 
 function renderHistory() {
-  if (dom.historyBadge) {
-    dom.historyBadge.textContent = `${state.history.length} attempt${state.history.length === 1 ? '' : 's'}`;
-  }
-  if (!dom.historyList) return;
-
   if (!state.history.length) {
-    dom.historyList.innerHTML = `<article class="history-item"><h4>No attempts yet</h4><div class="muted">Finished tests will appear here.</div></article>`;
+    dom.historyList.innerHTML = '<div class="muted">No completed attempts yet.</div>';
     return;
   }
-
-  dom.historyList.innerHTML = state.history
-    .map(
-      (entry) => `
+  dom.historyList.innerHTML = state.history.map((item) => `
     <article class="history-item">
-      <h4>${escapeHtml(entry.title)}</h4>
-      <div class="muted">${formatDate(entry.submittedAt)} · ${entry.score}/${entry.total} · ${entry.percent}%</div>
-      <div class="actions-row compact-row">
-        <button class="secondary-btn" type="button" data-history-open="${entry.id}">Open review</button>
+      <div>
+        <h4>${escapeHtml(item.title)}</h4>
+        <div class="muted">${escapeHtml(formatMode(item.mode))} · ${item.questionCount} questions · ${formatDate(item.submittedAt)}</div>
+        <div class="muted">${item.correct} correct · ${item.wrong} wrong · ${item.unanswered} unanswered</div>
       </div>
-    </article>
-  `
-    )
-    .join('');
-
-  dom.historyList.querySelectorAll('[data-history-open]').forEach((button) => {
-    on(button, 'click', () => {
-      const found = state.history.find((item) => item.id === button.dataset.historyOpen);
-      if (!found) return;
-      renderResults(found);
-      showPage('results');
-    });
-  });
+      <div class="score">${item.percent}%</div>
+    </article>`).join('');
 }
 
-function openDrawer() {
-  dom.sideDrawer?.classList.add('open');
-  dom.drawerBackdrop?.classList.remove('hidden');
-  dom.sideDrawer?.setAttribute('aria-hidden', 'false');
+function clearHistory() {
+  if (!state.history.length) return;
+  if (!confirm('Clear saved attempt history?')) return;
+  state.history = [];
+  localStorage.removeItem(CONFIG.storage.history);
+  renderHistory();
+  renderDashboard();
 }
 
-function closeDrawer() {
-  dom.sideDrawer?.classList.remove('open');
-  dom.drawerBackdrop?.classList.add('hidden');
-  dom.sideDrawer?.setAttribute('aria-hidden', 'true');
+function togglePalette() {
+  const collapsed = dom.questionPalette.classList.toggle('hidden');
+  dom.paletteToggle.textContent = collapsed ? '⌃' : '⌄';
 }
 
 function showPage(page) {
-  state.currentPage = page;
-
-  document.querySelectorAll('.app-page').forEach((section) =>
-    section.classList.toggle('active', section.dataset.page === page)
-  );
-  document.querySelectorAll('.drawer-link').forEach((button) =>
-    button.classList.toggle('active', button.dataset.page === page)
-  );
-  document.querySelectorAll('.bottom-link').forEach((button) =>
-    button.classList.toggle('active', button.dataset.page === page)
-  );
-
-  if (dom.currentPageTitle) dom.currentPageTitle.textContent = pageTitles[page] || 'NPTEL IoT';
-
-  if (dom.currentPageBadge) {
-    if (page === 'test') {
-      dom.currentPageBadge.textContent = state.activeTest
-        ? `${state.activeTest.currentIndex + 1}/${state.activeTest.questions.length}`
-        : 'No active test';
-    } else if (page === 'results' && state.history[0]) {
-      dom.currentPageBadge.textContent = `${state.history[0].percent}%`;
-    } else if (page === 'history') {
-      dom.currentPageBadge.textContent = `${state.history.length} saved`;
-    } else if (page === 'datasets') {
-      dom.currentPageBadge.textContent = `${state.banks.length} files`;
-    } else if (page === 'contact') {
-      dom.currentPageBadge.textContent = 'Support';
-    } else {
-      updateBuilderStatus();
-    }
-  }
-
-  closeDrawer();
+  const valid = ['home', 'pyq', 'mock', 'test', 'results', 'history'];
+  const target = valid.includes(page) ? page : 'home';
+  document.querySelectorAll('.page').forEach((el) => el.classList.toggle('active', el.dataset.page === target));
+  document.querySelectorAll('.nav-btn').forEach((el) => el.classList.toggle('active', el.dataset.go === target));
+  const titleMap = { home: 'Dashboard', pyq: 'PYQ Sets', mock: 'Mock Builder', test: 'Test', results: 'Results', history: 'History' };
+  dom.pageTitle.textContent = titleMap[target];
+  if (target === 'test') renderTest();
+  if (target === 'results') renderLastResult();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function copyIssueTemplate() {
-  const settings = readFilterSettings();
-  const template = [
-    'NPTEL IoT issue report',
-    `Year: ${settings.year === 'ALL' ? '' : settings.year}`,
-    `Session: ${settings.session === 'ALL' ? '' : settings.session}`,
-    `Week: ${settings.week === 'ALL' ? '' : settings.week}`,
-    'Question ID: ',
-    'Problem: ',
-    'Expected fix: ',
-    `Send to: ${APP_CONFIG.contributionEmail}`
-  ].join('\n');
-
-  if (navigator.clipboard?.writeText) {
-    navigator.clipboard.writeText(template)
-      .then(() => window.alert('Issue template copied.'))
-      .catch(() => window.alert(template));
-  } else {
-    window.alert(template);
-  }
+function currentPage() {
+  return document.querySelector('.page.active')?.dataset.page || 'home';
 }
 
-function openContributionMail() {
-  const subject = encodeURIComponent('NPTEL IoT missing session / correction');
-  const body = encodeURIComponent(
-    [
-      'Hello,',
-      '',
-      'I want to share a missing session, correction, or dataset feedback.',
-      '',
-      'Available missing session:',
-      '- 2018 JAN / 2019 JULY',
-      '',
-      'Details:',
-      ''
-    ].join('\n')
-  );
-  window.location.href = `mailto:${APP_CONFIG.contributionEmail}?subject=${subject}&body=${body}`;
+function currentQuestion() {
+  const test = state.activeTest;
+  return test?.questions?.[test.currentIndex] || null;
 }
 
-function copyContactDetails() {
-  const text = [
-    `Email: ${APP_CONFIG.contributionEmail}`,
-    `Social handle: @${APP_CONFIG.socialHandle}`,
-    'Requested session uploads: 2018 JAN / 2019 JULY'
-  ].join('\n');
-
-  if (navigator.clipboard?.writeText) {
-    navigator.clipboard.writeText(text)
-      .then(() => window.alert('Contact details copied.'))
-      .catch(() => window.alert(text));
-  } else {
-    window.alert(text);
-  }
+function normalizeSelected(value) {
+  if (Array.isArray(value)) return value.map(String);
+  if (value == null || value === '') return [];
+  return [String(value)];
 }
 
-function buildDatasetTitle(dataset) {
-  return `NPTEL IoT ${dataset.year} ${formatSession(dataset.session)}`;
+function sameSet(a, b) {
+  const aa = [...new Set(a.map(String))].sort();
+  const bb = [...new Set(b.map(String))].sort();
+  return aa.length === bb.length && aa.every((value, index) => value === bb[index]);
 }
 
-function getLatestDatasetBySession(session) {
-  return sortDatasets((state.manifest?.datasets || []).filter((dataset) => dataset.session === session))[0] || null;
+function resolveOptionText(options, key) {
+  return options?.find((o) => String(o.key) === String(key))?.text || '';
 }
 
-function sortDatasets(datasets) {
-  return [...datasets].sort((a, b) => {
-    if (b.year !== a.year) return b.year - a.year;
-    return sessionRank(b.session) - sessionRank(a.session);
-  });
+function uniqueSorted(values, comparator) {
+  const arr = [...new Set(values)];
+  return comparator ? arr.sort(comparator) : arr.sort();
+}
+
+function sortBankDesc(a, b) {
+  return (b.year - a.year) || (sessionRank(b.session) - sessionRank(a.session));
 }
 
 function sessionRank(session) {
-  return { JAN: 1, JULY: 2 }[String(session).toUpperCase()] || 0;
+  return normalizeSession(session) === 'JULY' ? 2 : normalizeSession(session) === 'JAN' ? 1 : 0;
 }
 
-function resolveOptionText(question, key) {
-  const option = (question.options || []).find((item) => String(item.key) === String(key));
-  return option ? option.text : '';
+function normalizeSession(value) {
+  const s = String(value || '').toUpperCase();
+  if (s === 'JAN' || s === 'JANUARY') return 'JAN';
+  if (s === 'JULY' || s === 'JUL') return 'JULY';
+  return s;
 }
 
-function formatSession(value) {
-  const upper = String(value || '').toUpperCase();
-  return upper === 'JAN' || upper === 'JULY' ? upper : formatType(value);
+function inferNumber(value) {
+  const match = String(value || '').match(/(\d+)/);
+  return match ? Number(match[1]) : 0;
 }
 
 function formatType(value) {
-  const raw = String(value || '');
-  if (!raw) return '';
-
   const map = {
+    mcq: 'MCQ',
     true_false: 'True / False',
     fill_blank: 'Fill Blank',
     code_based: 'Code Based',
     single_select: 'Single Select',
-    multi_select: 'Multi Select',
-    mcq: 'MCQ'
+    multi_select: 'Multi Select'
   };
-
-  if (map[raw]) return map[raw];
-  return raw.replaceAll('_', ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+  const raw = String(value || '');
+  return map[raw] || raw.replaceAll('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function formatDate(iso) {
-  try {
-    return new Date(iso).toLocaleString();
-  } catch {
-    return iso;
-  }
+function formatMode(mode) {
+  return mode === 'pyq' ? 'PYQ exam' : mode === 'practice' ? 'Practice' : 'Mixed mock';
 }
 
-function normalizeText(text) {
-  return String(text || '')
-    .toLowerCase()
-    .replace(/\s+/g, ' ')
-    .trim();
+function formatDate(timestamp) {
+  try { return new Date(timestamp).toLocaleString(); }
+  catch { return ''; }
 }
 
-function shuffle(items) {
-  const arr = [...items];
-  for (let i = arr.length - 1; i > 0; i -= 1) {
+function shuffleArray(array) {
+  for (let i = array.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
+    [array[i], array[j]] = [array[j], array[i]];
   }
-  return arr;
+  return array;
+}
+
+function safeJsonParse(text, fallback) {
+  try { return text ? JSON.parse(text) : fallback; }
+  catch { return fallback; }
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, Number(value) || 0));
+}
+
+function pad2(value) {
+  return String(Math.max(0, Number(value) || 0)).padStart(2, '0');
 }
 
 function escapeHtml(value) {
@@ -1450,5 +1055,9 @@ function escapeHtml(value) {
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
+    .replaceAll("'", '&#039;');
+}
+
+function escapeAttr(value) {
+  return escapeHtml(String(value ?? ''));
 }
