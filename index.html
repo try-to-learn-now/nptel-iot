@@ -3,425 +3,255 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>NPTEL IoT Practice Hub</title>
-  <meta
-    name="description"
-    content="Mobile-first NPTEL IoT practice app with normalized JSON banks, session-based filtering, and swipe-friendly test mode."
-  />
-  <meta name="theme-color" content="#2157c8" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
-    rel="stylesheet"
-  />
+  <meta name="theme-color" content="#1f4fbf" />
+  <meta name="description" content="NPTEL IoT PYQ practice and mock-test app." />
+  <title>NPTEL IoT PYQ & Mock</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <div class="notice-bar" id="noticeBar">
-    <span class="notice-pill">Notice</span>
-    <span id="noticeText">Loading question banks…</span>
-  </div>
-
-  <div class="drawer-backdrop hidden" id="drawerBackdrop"></div>
-
-  <aside class="side-drawer" id="sideDrawer" aria-hidden="true">
-    <div class="drawer-head">
+  <div class="app-shell">
+    <header class="topbar">
       <div>
-        <div class="eyebrow">Practice app</div>
-        <h2>NPTEL IoT</h2>
+        <div class="eyebrow">NPTEL · Internet of Things</div>
+        <h1 id="pageTitle">Dashboard</h1>
       </div>
-      <button class="icon-btn" id="closeDrawerBtn" type="button" aria-label="Close menu">✕</button>
-    </div>
+      <button id="themeBtn" class="icon-btn" type="button" aria-label="Toggle theme">🌙</button>
+    </header>
 
-    <div class="drawer-profile panel-soft">
-      <div class="profile-avatar" id="drawerProfileAvatar">G</div>
-      <div>
-        <small>Your profile</small>
-        <strong id="drawerProfileName">Guest User</strong>
-      </div>
-    </div>
-
-    <nav class="drawer-nav">
-      <button class="drawer-link active" type="button" data-page="home">Home</button>
-      <button class="drawer-link" type="button" data-page="build">Build Test</button>
-      <button class="drawer-link" type="button" data-page="test">Practice</button>
-      <button class="drawer-link" type="button" data-page="results">Results</button>
-      <button class="drawer-link" type="button" data-page="history">History</button>
-      <button class="drawer-link" type="button" data-page="datasets">Sessions</button>
-      <button class="drawer-link" type="button" data-page="contact">Contact</button>
-    </nav>
-
-    <div class="drawer-foot panel-soft">
-      <div class="mini-stat">
-        <span>Loaded</span>
-        <strong id="drawerLoadedStat">0</strong>
-      </div>
-      <div class="mini-stat">
-        <span>Coding</span>
-        <strong id="drawerCodingStat">0</strong>
-      </div>
-    </div>
-  </aside>
-
-  <header class="topbar">
-    <div class="topbar-left">
-      <button class="icon-btn" id="menuToggle" type="button" aria-label="Open menu">☰</button>
-      <div>
-        <div class="eyebrow">Mobile practice mode</div>
-        <h1 id="currentPageTitle">Home</h1>
-      </div>
-    </div>
-
-    <div class="topbar-right">
-      <button class="icon-btn" id="themeToggleBtn" type="button" aria-label="Toggle dark mode" style="font-size: 1.1rem;">🌙</button>
-      <button class="profile-chip simple" id="profileBtn" type="button" aria-label="Edit profile name">
-        <span class="profile-avatar small" id="profileAvatar">G</span>
-      </button>
-    </div>
-  </header>
-
-  <main class="app-main">
-    <section class="app-page active" id="page-home" data-page="home">
-      <div class="hero-card page-card compact-hero">
-        <div>
-          <div class="eyebrow">Normalized practice bank</div>
-          <h2>NPTEL IoT practice hub</h2>
-          <p class="hero-copy">
-            Session-based practice with cleaner navigation, advanced edge-to-edge mobile layout, and real-time result tracking.
-          </p>
-        </div>
-
-        <div class="hero-actions">
-          <button class="primary-btn" id="quickHomeBuildBtn" type="button">Open builder</button>
-          <button class="secondary-btn" id="quickHomeResumeBtn" type="button">Resume practice</button>
-        </div>
-      </div>
-
-      <div class="stats-grid">
-        <article class="stat-card">
-          <span>Total questions</span>
-          <strong id="totalQuestionsStat">0</strong>
-        </article>
-        <article class="stat-card">
-          <span>Usable now</span>
-          <strong id="usableQuestionsStat">0</strong>
-        </article>
-        <article class="stat-card">
-          <span>Image-required hidden</span>
-          <strong id="imagePendingStat">0</strong>
-        </article>
-        <article class="stat-card">
-          <span>Saved attempts</span>
-          <strong id="historyStat">0</strong>
-        </article>
-        <article class="stat-card">
-          <span>Years loaded</span>
-          <strong id="yearsStat">0</strong>
-        </article>
-        <article class="stat-card">
-          <span>Varieties</span>
-          <strong id="typesStat">0</strong>
-        </article>
-      </div>
-
-      <section class="page-card">
-        <div class="section-head between">
+    <main class="main">
+      <section class="page active" data-page="home" id="page-home">
+        <div class="hero card">
           <div>
-            <h3>Quick presets</h3>
-            <p class="muted">Start with the most useful mixes.</p>
+            <span class="pill">PYQ + Mock Engine</span>
+            <h2>Practice like an exam, review like a PYQ bank.</h2>
+            <p class="muted">Image-dependent questions stay excluded for now. Invalid or mislabeled datasets are quarantined automatically instead of entering a test.</p>
           </div>
-          <span class="badge subtle" id="datasetBadge">Loading…</span>
-        </div>
-
-        <div class="quick-grid">
-          <button class="secondary-btn" data-quick="latest-jan" type="button">Latest JAN</button>
-          <button class="secondary-btn" data-quick="latest-july" type="button">Latest JULY</button>
-          <button class="secondary-btn" data-quick="mixed-2025" type="button">Mixed 2025</button>
-          <button class="secondary-btn" data-quick="all-years" type="button">All years</button>
-          <button class="secondary-btn" data-quick="code" type="button">Coding only</button>
-          <button class="secondary-btn" data-quick="tf" type="button">True / False</button>
-        </div>
-
-        <div class="builder-status compact" id="homeSummaryText"></div>
-
-        <hr class="card-divider" />
-
-        <div class="section-head">
-          <div>
-            <h3>Loaded sessions</h3>
-            <p class="muted">All sessions currently loaded from your data folder.</p>
+          <div class="hero-actions">
+            <button class="btn primary" data-go="pyq" type="button">Open PYQ sets</button>
+            <button class="btn secondary" data-go="mock" type="button">Build mock</button>
           </div>
         </div>
 
-        <div class="dataset-grid compact" id="homeDatasetsGrid"></div>
+        <div class="stat-grid">
+          <article class="stat"><span>Usable questions</span><strong id="statUsable">0</strong></article>
+          <article class="stat"><span>Valid PYQ sets</span><strong id="statSets">0</strong></article>
+          <article class="stat"><span>Image questions skipped</span><strong id="statImages">0</strong></article>
+          <article class="stat"><span>Quarantined sets</span><strong id="statQuarantine">0</strong></article>
+        </div>
+
+        <section class="card">
+          <div class="section-head">
+            <div>
+              <h3>Quick start</h3>
+              <p class="muted">Safe presets based only on validated, non-image questions.</p>
+            </div>
+          </div>
+          <div class="quick-grid">
+            <button class="quick-card" id="latestPyqBtn" type="button"><strong>Latest PYQ</strong><span>Original order</span></button>
+            <button class="quick-card" id="quickMockBtn" type="button"><strong>Mixed 30</strong><span>Balanced random set</span></button>
+            <button class="quick-card" id="resumeBtn" type="button"><strong>Resume</strong><span id="resumeLabel">No saved test</span></button>
+          </div>
+        </section>
+
+        <section class="card" id="integrityCard">
+          <div class="section-head between">
+            <div>
+              <h3>Data integrity</h3>
+              <p class="muted">Bad metadata never silently enters your mock.</p>
+            </div>
+            <span class="badge" id="integrityBadge">Checking…</span>
+          </div>
+          <div id="integrityList" class="integrity-list"></div>
+        </section>
       </section>
-    </section>
 
-    <section class="app-page" id="page-build" data-page="build">
-      <div class="page-card">
-        <div class="section-head between wrap-gap">
-          <div>
-            <h2>Build a practice set</h2>
-            <p class="muted">Choose year and session only from loaded files. Max 50 questions per test.</p>
+      <section class="page" data-page="pyq" id="page-pyq">
+        <div class="card">
+          <div class="section-head between wrap">
+            <div>
+              <h2>PYQ Sets</h2>
+              <p class="muted">Start a full session or a specific week. PYQ order and option order stay unchanged.</p>
+            </div>
+            <span id="pyqCountBadge" class="badge">0 sets</span>
           </div>
-          <span class="badge" id="builderDatasetBadge">0 files</span>
+          <div id="pyqGrid" class="dataset-grid"></div>
         </div>
+      </section>
 
-        <div class="filter-grid">
-          <div>
-            <label class="field-label" for="yearSelect">Year</label>
-            <select class="text-input" id="yearSelect">
-              <option value="ALL">All years</option>
-            </select>
-          </div>
-
-          <div>
-            <label class="field-label" for="sessionSelect">Session</label>
-            <select class="text-input" id="sessionSelect">
-              <option value="ALL">All sessions</option>
-            </select>
+      <section class="page" data-page="mock" id="page-mock">
+        <div class="card">
+          <div class="section-head">
+            <div>
+              <h2>Build a mock test</h2>
+              <p class="muted">Mixed mode balances questions across selected sets/weeks instead of taking a random block from one file.</p>
+            </div>
           </div>
 
-          <div>
-            <label class="field-label" for="weekSelect">Week</label>
-            <select class="text-input" id="weekSelect">
-              <option value="ALL">All weeks</option>
-            </select>
+          <div class="form-grid">
+            <label>Year
+              <select id="yearSelect"><option value="ALL">All years</option></select>
+            </label>
+            <label>Session
+              <select id="sessionSelect"><option value="ALL">All sessions</option></select>
+            </label>
+            <label>Week
+              <select id="weekSelect"><option value="ALL">All weeks</option></select>
+            </label>
+            <label>Question type
+              <select id="typeSelect"><option value="ALL">All types</option></select>
+            </label>
+            <label>Questions
+              <select id="countSelect">
+                <option value="15">15</option>
+                <option value="30" selected>30</option>
+                <option value="50">50</option>
+                <option value="75">75</option>
+                <option value="100">100</option>
+                <option value="200">All available</option>
+              </select>
+            </label>
+            <label>Mock timer
+              <select id="timerSelect">
+                <option value="0">No timer</option>
+                <option value="15">15 minutes</option>
+                <option value="30">30 minutes</option>
+                <option value="45">45 minutes</option>
+                <option value="60" selected>60 minutes</option>
+                <option value="90">90 minutes</option>
+                <option value="120">120 minutes</option>
+                <option value="180">180 minutes</option>
+              </select>
+            </label>
           </div>
 
-          <div>
-            <label class="field-label" for="typeSelect">Variety</label>
-            <select class="text-input" id="typeSelect">
-              <option value="ALL">All varieties</option>
-            </select>
+          <div class="toggle-row">
+            <label class="check-chip"><input id="shuffleOptions" type="checkbox" /> Shuffle options</label>
+            <label class="check-chip"><input id="practiceMode" type="checkbox" /> Practice mode (allow solution check)</label>
           </div>
 
-          <div>
-            <label class="field-label" for="practiceSelect">Focus</label>
-            <select class="text-input" id="practiceSelect">
-              <option value="ALL">All focus types</option>
-              <option value="conceptual">Conceptual</option>
-              <option value="coding">Coding</option>
-              <option value="visual">Visual</option>
-            </select>
+          <div class="pool-box">
+            <div><span>Available after filters</span><strong id="poolCount">0</strong></div>
+            <div><span>Image questions excluded</span><strong id="poolImageCount">0</strong></div>
           </div>
 
-          <select id="countSelect" class="form-select">
-  <option value="10">10</option>
-  <option value="15">15</option>
-  <option value="20">20</option>
-  <option value="25">25</option>
-  <option value="30">30</option>
-  <option value="40">40</option>
-  <option value="50">50</option>
-  <option value="200">200 (All)</option>
-</select>
+          <button id="startMockBtn" class="btn primary full" type="button">Start mock test</button>
+        </div>
+      </section>
 
-</div>
-
+      <section class="page" data-page="test" id="page-test">
+        <div id="testEmpty" class="card empty-state">
+          <h2>No active test</h2>
+          <p class="muted">Start a PYQ or mixed mock first.</p>
+          <button class="btn primary" data-go="mock" type="button">Build mock</button>
         </div>
 
-        <div class="filter-grid second-row">
-          <div class="full-span">
-            <label class="field-label" for="searchInput">Search</label>
-            <input
-              class="text-input"
-              id="searchInput"
-              type="text"
-              placeholder="Question text, answer, reference, or topic"
-            />
+        <div id="testShell" class="test-shell hidden">
+          <section class="exam-header card sticky-card">
+            <div class="exam-title-row">
+              <div>
+                <div class="eyebrow" id="testModeLabel">Mock test</div>
+                <h2 id="testTitle">Test</h2>
+                <p class="muted" id="testMeta"></p>
+              </div>
+              <div class="timer-box" id="timerBox">
+                <span>Time left</span>
+                <strong id="timerText">--:--</strong>
+              </div>
+            </div>
+            <div class="progress-track"><div id="testProgress" class="progress-fill"></div></div>
+            <div class="status-strip">
+              <span><b id="answeredStat">0</b> answered</span>
+              <span><b id="reviewStat">0</b> review</span>
+              <span><b id="unansweredStat">0</b> unanswered</span>
+            </div>
+          </section>
+
+          <div class="exam-layout">
+            <section class="card question-card">
+              <div class="question-top">
+                <div>
+                  <span class="pill" id="questionNo">Question 1</span>
+                  <span class="source-label" id="questionSource"></span>
+                </div>
+                <button id="markBtn" class="btn ghost compact" type="button">☆ Mark for review</button>
+              </div>
+
+              <div id="questionBody"></div>
+
+              <div class="question-actions">
+                <button id="prevBtn" class="btn secondary" type="button">← Previous</button>
+                <button id="clearBtn" class="btn ghost" type="button">Clear response</button>
+                <button id="checkBtn" class="btn ghost hidden" type="button">Check solution</button>
+                <button id="nextBtn" class="btn primary" type="button">Save & Next →</button>
+              </div>
+            </section>
+
+            <aside class="card palette-card">
+              <div class="section-head between">
+                <h3>Question palette</h3>
+                <button id="paletteToggle" class="icon-btn small" type="button" aria-label="Toggle palette">⌄</button>
+              </div>
+              <div class="palette-legend">
+                <span><i class="dot current"></i>Current</span>
+                <span><i class="dot answered"></i>Answered</span>
+                <span><i class="dot review"></i>Review</span>
+                <span><i class="dot unseen"></i>Not answered</span>
+              </div>
+              <div id="questionPalette" class="palette"></div>
+              <button id="submitBtn" class="btn danger full" type="button">Submit test</button>
+              <button id="saveCloseBtn" class="btn secondary full" type="button">Save & close</button>
+            </aside>
           </div>
         </div>
+      </section>
 
-        <div class="toggle-grid">
-          <label class="toggle-chip">
-            <input id="hideRemovedToggle" type="checkbox" checked />
-            Hide removed questions
-          </label>
-
-          <label class="toggle-chip">
-            <input id="hideImagePendingToggle" type="checkbox" checked />
-            Hide image-required questions
-          </label>
-
-          <label class="toggle-chip">
-            <input id="shuffleQuestionsToggle" type="checkbox" checked />
-            Shuffle questions
-          </label>
-
-          <label class="toggle-chip">
-            <input id="shuffleOptionsToggle" type="checkbox" checked />
-            Shuffle options
-          </label>
-
-          <label class="toggle-chip">
-            <input id="showSolutionsToggle" type="checkbox" checked />
-            Enable check-solution button
-          </label>
-
-          <label class="toggle-chip">
-            <input id="showReferenceToggle" type="checkbox" checked />
-            Show references in review
-          </label>
+      <section class="page" data-page="results" id="page-results">
+        <div id="resultsEmpty" class="card empty-state">
+          <h2>No result yet</h2>
+          <p class="muted">Submit a test to see the review.</p>
         </div>
-
-        <div class="builder-status" id="builderStatus"></div>
-
-        <div class="actions-row">
-          <button class="primary-btn" id="startTestBtn" type="button">Start practice</button>
-          <button class="secondary-btn" id="resumeTestBtn" type="button">Resume saved test</button>
-          <button class="ghost-btn" id="resetHistoryBtn" type="button">Reset history</button>
+        <div id="resultsShell" class="hidden">
+          <section class="card">
+            <div class="section-head between wrap">
+              <div>
+                <div class="eyebrow">Latest result</div>
+                <h2 id="resultTitle">Result</h2>
+              </div>
+              <span id="resultScore" class="score-badge">0 / 0</span>
+            </div>
+            <div class="stat-grid result-stats">
+              <article class="stat"><span>Percentage</span><strong id="resultPercent">0%</strong></article>
+              <article class="stat"><span>Correct</span><strong id="resultCorrect">0</strong></article>
+              <article class="stat"><span>Wrong</span><strong id="resultWrong">0</strong></article>
+              <article class="stat"><span>Unanswered</span><strong id="resultUnanswered">0</strong></article>
+            </div>
+          </section>
+          <section class="card">
+            <div class="section-head"><h3>Question review</h3></div>
+            <div id="reviewList" class="review-list"></div>
+          </section>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <section class="app-page" id="page-test" data-page="test">
-      <div class="page-card unified-test-card hidden" id="testPanel">
-        
-        <div class="between wrap-gap">
-          <div>
-            <h2 id="testTitle" style="margin:0 0 4px; font-size:1.1rem;">Practice test</h2>
-            <p class="muted" id="testMeta" style="margin:0; font-size:0.85rem;"></p>
+      <section class="page" data-page="history" id="page-history">
+        <div class="card">
+          <div class="section-head between wrap">
+            <div><h2>Attempt history</h2><p class="muted">Stored only in this browser.</p></div>
+            <button id="clearHistoryBtn" class="btn ghost compact" type="button">Clear history</button>
           </div>
-          <div style="display:flex; gap:8px;">
-            <span class="badge" id="progressChip">0 / 0</span>
-            <span class="badge subtle" id="answeredCountBadge">0 answered</span>
-          </div>
+          <div id="historyList" class="history-list"></div>
         </div>
+      </section>
+    </main>
 
-        <div class="progress-bar-shell thin" style="margin: 16px 0;">
-          <div class="progress-bar" id="progressBar"></div>
-        </div>
-
-        <article id="questionCard" style="min-height: 250px;"></article>
-        
-        <div class="swipe-indicator">
-          <span class="red-arrow left">‹</span>
-          <span>Swipe to navigate</span>
-          <span class="red-arrow right">›</span>
-        </div>
-
-        <hr class="card-divider" />
-
-        <div class="between" style="margin-bottom: 12px;">
-          <h3 style="margin:0; font-size:1rem;">Navigator</h3>
-          <span class="badge subtle">Tap to jump</span>
-        </div>
-        <div class="question-palette" id="questionPalette"></div>
-
-        <div class="test-bottom-actions">
-          <button class="ghost-btn" id="quitTestBtn" type="button">Save & Close</button>
-          <button class="primary-btn" id="submitTestBtn" type="button">Submit Test</button>
-        </div>
-
-      </div>
-
-      <div class="page-card empty-state" id="testEmptyState">
-        <h3>No active practice yet</h3>
-        <p class="muted">Open Build Test, choose filters, and start a set. You can resume a saved test here.</p>
-        <div class="actions-row center">
-          <button class="primary-btn" data-page-jump="build" type="button">Go to builder</button>
-          <button class="secondary-btn" id="testResumeBtn" type="button">Resume saved test</button>
-        </div>
-      </div>
-    </section>
-
-    <section class="app-page" id="page-results" data-page="results">
-      <div class="page-card hidden" id="resultsPanel">
-        <div class="section-head between wrap-gap">
-          <div>
-            <h2>Result & review</h2>
-            <p class="muted">Check score, compare answers, and review explanations.</p>
-          </div>
-          <span class="badge" id="scoreBadge">0 / 0</span>
-        </div>
-
-        <div class="results-summary" id="resultsSummary"></div>
-        <div class="review-list" id="reviewList"></div>
-
-        <div class="actions-row">
-          <button class="primary-btn" id="reviewRestartBtn" type="button">Build another test</button>
-        </div>
-      </div>
-
-      <div class="page-card empty-state" id="resultsEmptyState">
-        <h3>No submitted result yet</h3>
-        <p class="muted">Your last completed practice result will appear here after submission.</p>
-      </div>
-    </section>
-
-    <section class="app-page" id="page-history" data-page="history">
-      <div class="page-card">
-        <div class="section-head between wrap-gap">
-          <div>
-            <h2>Saved history</h2>
-            <p class="muted">Recent attempts are stored only in this browser.</p>
-          </div>
-          <span class="badge" id="historyBadge">0 attempts</span>
-        </div>
-
-        <div class="history-list" id="historyList"></div>
-      </div>
-    </section>
-
-    <section class="app-page" id="page-datasets" data-page="datasets">
-      <div class="page-card">
-        <div class="section-head between wrap-gap">
-          <div>
-            <h2>Loaded sessions</h2>
-            <p class="muted">Session list comes directly from the available normalized files.</p>
-          </div>
-          <span class="badge" id="manifestBadge">0 files</span>
-        </div>
-
-        <div class="dataset-grid" id="dataPageGrid"></div>
-      </div>
-    </section>
-
-    <section class="app-page" id="page-contact" data-page="contact">
-      <div class="page-card">
-        <div class="section-head">
-          <div>
-            <h2>Contact & contribution</h2>
-            <p class="muted">
-              If you have NPTEL IoT 2018 JAN or 2019 JULY question sets, send them here.
-            </p>
-          </div>
-        </div>
-
-        <div class="contact-card">
-          <div class="contact-line">
-            <span class="contact-label">Email</span>
-            <strong>nkcbanka@gmail.com</strong>
-          </div>
-          <div class="contact-line">
-            <span class="contact-label">Social</span>
-            <strong>@niteshjeee</strong>
-          </div>
-          <div class="contact-line">
-            <span class="contact-label">GitHub</span>
-            <strong>Niteshjeee / nptel-iot</strong>
-          </div>
-        </div>
-
-        <div class="actions-row">
-          <button class="primary-btn" id="mailContributorBtn" type="button">Email contributor</button>
-          <button class="secondary-btn" id="copyContactBtn" type="button">Copy contact</button>
-          <button class="secondary-btn" id="openRepoBtn" type="button">Open repo</button>
-          <button class="ghost-btn" id="copyIssueTemplateBtn" type="button">Copy issue template</button>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <nav class="bottom-nav">
-    <button class="bottom-link active" type="button" data-page="home">Home</button>
-    <button class="bottom-link" type="button" data-page="build">Build</button>
-    <button class="bottom-link" type="button" data-page="test">Practice</button>
-    <button class="bottom-link" type="button" data-page="history">History</button>
-    <button class="bottom-link" type="button" data-page="datasets">Data</button>
-  </nav>
+    <nav class="bottom-nav" aria-label="Main navigation">
+      <button class="nav-btn active" data-go="home" type="button">Home</button>
+      <button class="nav-btn" data-go="pyq" type="button">PYQ</button>
+      <button class="nav-btn" data-go="mock" type="button">Mock</button>
+      <button class="nav-btn" data-go="test" type="button">Test</button>
+      <button class="nav-btn" data-go="history" type="button">History</button>
+    </nav>
+  </div>
 
   <script src="./app.js"></script>
 </body>
