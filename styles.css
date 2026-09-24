@@ -267,3 +267,60 @@ select, input[type="text"] { width: 100%; min-height: 46px; padding: 10px 12px; 
   .palette { grid-template-columns: repeat(6, 1fr); }
   .history-item { align-items: flex-start; }
 }
+
+
+/* Compact mobile exam chrome: keep the question visible, not the header. */
+@media (max-width: 680px) {
+  body.exam-active .topbar { display: none; }
+  body.exam-active .main { padding-top: 6px; }
+  body.exam-active .sticky-card { top: 0; }
+
+  #page-test .exam-header {
+    padding: 9px 11px;
+    margin-bottom: 8px;
+    border-radius: 12px;
+  }
+  #page-test .exam-title-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+  }
+  #page-test #testModeLabel,
+  #page-test #testMeta { display: none; }
+  #page-test .exam-title-row h2 {
+    margin: 0;
+    font-size: .92rem;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #page-test .timer-box {
+    min-width: 72px;
+    padding: 4px 8px;
+    border-radius: 9px;
+  }
+  #page-test .timer-box span { display: none; }
+  #page-test .timer-box strong {
+    font-size: .94rem;
+    line-height: 1.2;
+  }
+  #page-test .progress-track {
+    height: 4px;
+    margin: 7px 0 6px;
+  }
+  #page-test .status-strip {
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+    justify-content: start;
+    gap: 12px;
+    font-size: .7rem;
+    line-height: 1.1;
+  }
+  #page-test .status-strip span { white-space: nowrap; }
+  #page-test .question-card {
+    padding-top: 12px;
+    margin-bottom: 8px;
+  }
+}
