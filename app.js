@@ -966,6 +966,7 @@ function showPage(page) {
   document.querySelectorAll('.nav-btn').forEach((el) => el.classList.toggle('active', el.dataset.go === target));
   const titleMap = { home: 'Dashboard', pyq: 'PYQ Sets', mock: 'Mock Builder', test: 'Test', results: 'Results', history: 'History' };
   dom.pageTitle.textContent = titleMap[target];
+  document.body.classList.toggle('exam-active', target === 'test' && Boolean(state.activeTest));
   if (target === 'test') renderTest();
   if (target === 'results') renderLastResult();
   window.scrollTo({ top: 0, behavior: 'smooth' });
